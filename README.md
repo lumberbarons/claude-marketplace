@@ -1,4 +1,4 @@
-# 🪵 Lumber Mart 🛒
+# 🪵🛒 Lumber Mart
 
 A plugin marketplace for Claude Code that lets you discover and install plugins for enhanced development workflows.
 
