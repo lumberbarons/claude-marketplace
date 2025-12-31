@@ -5,14 +5,17 @@
   },
   "metadata": {
     "description": "A basic Claude Code plugin marketplace",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "license": "MIT"
   },
   "plugins": [
     {
-      "name": "example-plugin",
-      "source": "./plugins/example-plugin",
-      "description": "A simple example plugin demonstrating marketplace functionality",
-      "version": "1.0.0"
+      "name": "wavejson-plugin",
+      "source": "./plugins/wavejson-plugin",
+      "description": "Generate WaveJSON timing diagrams for digital signals and create HTML viewers to display them using WaveDrom",
+      "version": "1.0.0",
+      "category": "hardware",
+      "keywords": ["wavejson", "wavedrom", "timing", "diagrams", "digital-signals", "hardware"]
     }
   ]
 }

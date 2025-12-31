@@ -1,0 +1,10 @@
+{
+  "name": "wavejson-plugin",
+  "description": "Generate WaveJSON timing diagrams for digital signals and create HTML viewers to display them using WaveDrom",
+  "version": "1.0.0",
+  "author": {
+    "name": "lumberbarons"
+  },
+  "keywords": ["wavejson", "wavedrom", "timing", "diagrams", "digital-signals", "hardware"],
+  "category": "hardware"
+}
