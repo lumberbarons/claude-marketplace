@@ -1,0 +1,18 @@
+{
+  "name": "claude-marketplace",
+  "owner": {
+    "name": "lumberbarons"
+  },
+  "metadata": {
+    "description": "A basic Claude Code plugin marketplace",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "example-plugin",
+      "source": "./plugins/example-plugin",
+      "description": "A simple example plugin demonstrating marketplace functionality",
+      "version": "1.0.0"
+    }
+  ]
+}
