@@ -73,28 +73,6 @@ if __name__ == "__main__":
     my_circuit()
 ```
 
-## Component Search
-
-```bash
-# JLCPCB search (fast, zero AI tokens)
-uv run jlc-fast search "STM32F103C8T6"
-uv run jlc-fast search "USB Type-C connector"
-uv run jlc-fast search "10uF 0805 capacitor"
-
-# Find cheapest with stock requirement
-uv run jlc-fast cheapest "10k resistor 0805" --min-stock 10000
-
-# Search with minimum stock filter
-uv run jlc-fast search "LDO 3.3V" --min-stock 1000
-
-# KiCad symbol search
-/find-symbol STM32F4
-/find-symbol "voltage regulator"
-
-# Multi-source availability
-/find-parts STM32F103C8T6
-```
-
 ## Component Definition
 
 **Minimum required:**
@@ -404,6 +382,7 @@ if __name__ == "__main__":
 ## Workflow Cheat Sheet
 
 ### Create New Project
+
 ```bash
 uv run cs-new-project my_project
 cd my_project
@@ -412,6 +391,7 @@ kicad my_project.kicad_pro
 ```
 
 ### Generate Circuit from Description
+
 1. Parse requirements (components, specs)
 2. Search components: `jlc-fast search "part description"`
 3. Write Python circuit definition
@@ -419,43 +399,13 @@ kicad my_project.kicad_pro
 5. Review in KiCad
 
 ### Convert Documentation to Circuit
+
 1. Find docs: `glob **/*PINOUT*.md`
 2. Read files: `read BOARD_PINOUTS.md`
 3. Extract: IC list, connections, nets
 4. Write Python with Component() and Net()
 5. Map connections from tables
 6. Generate and verify
-
-### Search and Select Components
-```bash
-# Search JLCPCB
-jlc-fast search "component description"
-
-# Verify stock (>1000 preferred)
-jlc-fast search "part" --min-stock 1000
-
-# Find symbol
-/find-symbol "component type"
-
-# Add to circuit with full details
-```
-
-### Generate Manufacturing Files
-```python
-generate_bom(project_name="board")
-generate_gerbers(project_name="board")
-generate_pdf_schematic(project_name="board")
-```
-
-## Stock Availability Guide
-
-| Stock | Status | Action |
-|-------|--------|--------|
-| > 10,000 | Very Safe | First choice |
-| 1,000 - 10,000 | Safe | Good for production |
-| 100 - 1,000 | Acceptable | OK for prototypes |
-| < 100 | Risky | Find alternative |
-| 0 | Out of Stock | Must substitute |
 
 ## Troubleshooting
 
@@ -600,28 +550,18 @@ if __name__ == "__main__":
 
 ## Tips
 
-1. **Always check stock before committing to a part**
-   ```bash
-   jlc-fast search "exact part number" --min-stock 1000
-   ```
 
-2. **Use meaningful net names**
+1. **Use meaningful net names**
    - Good: `vcc_3v3`, `usb_dp`, `spi_mosi`
    - Bad: `net1`, `sig`, `x`
 
-3. **Add JLCPCB part numbers for assembly**
-   ```python
-   supplier="JLCPCB",
-   supplier_pn="C12345"  # Makes assembly easier
-   ```
-
-4. **Break large circuits into subcircuits**
+2. **Break large circuits into subcircuits**
    - Power supply
    - MCU core
    - Peripherals
    - Communication interfaces
 
-5. **Document assumptions in docstrings**
+3. **Document assumptions in docstrings**
    ```python
    @circuit(name="MyBoard")
    def my_board():
@@ -632,17 +572,17 @@ if __name__ == "__main__":
        """
    ```
 
-6. **Validate incrementally**
+4. **Validate incrementally**
    - Test simple circuits first
    - Add complexity gradually
    - Generate KiCad after each major addition
 
-7. **Use patterns when possible**
+5. **Use patterns when possible**
    - Pre-verified, manufacturing-ready
    - Saves time and reduces errors
    - Customize with parameters
 
-8. **Cross-reference documentation**
+6. **Cross-reference documentation**
    - Link to datasheets in comments
    - Reference source docs for reverse-engineered designs
    - Keep Python code and docs in sync
@@ -652,5 +592,4 @@ if __name__ == "__main__":
 - **Documentation**: https://circuit-synth.readthedocs.io
 - **GitHub**: https://github.com/circuit-synth/circuit-synth
 - **KiCad Libraries**: https://kicad.github.io/symbols/
-- **JLCPCB Parts**: https://jlcpcb.com/parts
 - **Component Search**: https://componentsearchengine.com/

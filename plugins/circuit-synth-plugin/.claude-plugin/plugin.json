@@ -1,7 +1,7 @@
 {
   "name": "circuit-synth-plugin",
   "description": "Create and design PCB circuits using Python and KiCad with AI assistance. Generate circuits from natural language descriptions, existing documentation, or templates. Search components, manage BOMs, and produce manufacturing-ready outputs.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "lumberbarons"
   }
