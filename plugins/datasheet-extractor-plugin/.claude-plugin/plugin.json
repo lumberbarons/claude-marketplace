@@ -1,0 +1,8 @@
+{
+  "name": "datasheet-extractor-plugin",
+  "description": "Extract structured information from IC and component datasheets (PDF or URLs) and generate consistent, comprehensive markdown summaries. Perfect for hardware design, documenting components, and creating AI-consumable reference materials.",
+  "version": "1.0.0",
+  "author": {
+    "name": "lumberbarons"
+  }
+}

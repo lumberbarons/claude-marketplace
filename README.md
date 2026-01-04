@@ -32,6 +32,21 @@ Create and design PCB circuits using Python and KiCad with AI assistance. Genera
 - Hierarchical design with modular subcircuits
 - Version control friendly (text-based definitions)
 
+### datasheet-extractor-plugin
+
+Extract structured information from integrated circuit and component datasheets (PDF files or URLs) and generate comprehensive markdown summaries. Perfect for documenting components, creating reference materials for hardware projects, and building AI-consumable component libraries.
+
+**Features:**
+- Extract from both PDF files and URLs
+- Structured 6-section format: General Info, Pinout, Usage, Electrical Characteristics, Package Info, Application Examples
+- 100% accurate pinout tables with voltage levels and active HIGH/LOW indication
+- Complete timing specifications with units and conditions
+- Electrical characteristics tables with min/typ/max values
+- Package variant documentation
+- Human and AI-readable markdown output
+- Save to standardized datasheets/ directory
+- Source fidelity - only extracts from provided datasheet
+
 ## Usage
 
 ### Adding This Marketplace
@@ -53,6 +68,7 @@ Create and design PCB circuits using Python and KiCad with AI assistance. Genera
 # Install a plugin
 /plugin install wavejson-plugin@lumber-mart
 /plugin install circuit-synth-plugin@lumber-mart
+/plugin install datasheet-extractor-plugin@lumber-mart
 ```
 
 ## License
