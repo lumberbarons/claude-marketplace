@@ -1,15 +1,13 @@
 ---
-name: datasheet-extractor
-description: Extract structured information from integrated circuit and component datasheets (PDF files or URLs) and generate consistent markdown summaries. Use when the user requests to extract, summarize, analyze, or document information from IC/component datasheets, or when they provide a datasheet and want structured documentation. Triggers on phrases like "extract this datasheet", "summarize this datasheet", "analyze [component name]", "document this IC", or when working with datasheets for hardware design.
+name: datasheet-agent
+description: Autonomous agent for extracting structured information from IC and component datasheets (PDFs or URLs) and generating standardized markdown summaries. Executes 6-step workflow autonomously input validation, datasheet reading, structured extraction (6 sections), markdown generation, verification, and output summary.
+tools: Read, Write, WebFetch, Glob, Bash
+model: inherit
 ---
 
-# Datasheet Extractor
+# Datasheet Agent
 
-Extract comprehensive, structured information from IC and component datasheets and generate markdown summaries optimized for both human readability and AI consumption.
-
-## Overview
-
-This skill processes datasheets (PDFs or URLs) for integrated circuits and components, extracting key information into a standardized markdown format. The output is designed to be referenced by both engineers and Claude when working with the component.
+Autonomously extract comprehensive, structured information from IC and component datasheets and generate markdown summaries optimized for both human readability and AI consumption.
 
 ## Workflow
 
@@ -58,7 +56,7 @@ Include:
 
 #### Section 2: Pinout
 
-**CRITICAL: This section must be 100% accurate.**
+**CRITICAL: This section must be 100% accurate. If the datasheet is not clear, ask the user.**
 
 For each pin, document:
 - **Pin number**: Physical pin number on package
@@ -155,25 +153,23 @@ Format as markdown tables where appropriate:
 
 #### Section 5: Package Information
 
-Include:
-- **Package types available**: List all packages (DIP, SOIC, TSSOP, QFN, etc.)
-- **Package codes**: Suffix codes and what they mean (D=SOIC, N=DIP, PW=TSSOP, etc.)
-- **Pin count**: Number of pins per package
-- **Dimensions**: Key dimensions (length × width × height) in mm
-- **Thermal resistance**: θJA (junction-to-ambient) in °C/W if available
-- **Moisture sensitivity level**: MSL rating if provided
-- **Lead finish**: RoHS compliance, lead-free status
+Include package details:
+- Package types available (DIP, SOIC, QFN, etc.)
+- Physical dimensions (length × width × height)
+- Pin pitch and spacing
+- Thermal characteristics (junction-to-ambient thermal resistance)
+- Lead finish and materials (if specified)
+- MSL (Moisture Sensitivity Level) rating if applicable
 
 #### Section 6: Application Examples
 
-Extract practical usage information:
-- **Typical application circuits**: Describe reference designs from datasheet
-- **Component values**: Resistor/capacitor values recommended
-- **Layout recommendations**: PCB layout guidance if provided
-- **Design considerations**: Important notes for using the component
-- **Common use cases**: What the component is typically used for
-
-Reference figure numbers from the datasheet for circuit diagrams.
+Document common use cases and reference circuits:
+- Typical application circuits described in datasheet
+- Cascading multiple devices (if applicable)
+- Interface examples (e.g., connecting to microcontroller)
+- Layout recommendations and PCB considerations
+- Decoupling and bypass capacitor recommendations
+- Any application notes referenced in the datasheet
 
 ### Step 4: Generate Markdown File
 
@@ -300,18 +296,9 @@ The generated markdown must be:
 - Use italic for notes and clarifications
 - Use code formatting for part numbers, register names, pin names
 
-## Example Invocations
-
-User might say:
-- "Extract this datasheet: https://www.ti.com/lit/ds/symlink/sn74hc595.pdf"
-- "Summarize the ATmega328P datasheet for me"
-- "I need documentation for this IC: /path/to/lm358.pdf"
-- "Help me understand the 74HC595"
-- "/datasheet-extractor https://example.com/datasheet.pdf"
-
 ## Reference Materials
 
-- **Markdown template**: See `references/example_output.md` for a complete example of expected output format
+- **Markdown template**: See `references/example_output.md` in the skill directory for a complete example of expected output format
 
 ## Validation
 
@@ -322,6 +309,7 @@ Before considering the extraction complete:
 - [ ] Timing values include units and conditions
 - [ ] Electrical characteristics extracted with min/typ/max values
 - [ ] Package information documented
+- [ ] Application examples included
 - [ ] File saved to correct location with correct naming
 - [ ] Source datasheet referenced
 - [ ] No placeholder or TODO text remains
