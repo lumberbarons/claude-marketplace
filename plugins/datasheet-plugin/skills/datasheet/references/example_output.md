@@ -1,75 +1,58 @@
-# SN74HC595 - 8-Bit Shift Registers With 3-State Output Registers
+# ABC4201 - Dual Constant-Current LED Driver
 
-**Manufacturer:** Texas Instruments
-**Datasheet:** https://www.ti.com/lit/ds/symlink/sn74hc595.pdf (SCLS041J – October 2021)
+**Manufacturer:** ACME Semiconductor (Fictional)
+**Datasheet:** example-fictional-component.pdf
 **Extracted:** 2026-01-04
+
+> **DISCLAIMER:** This is a fictional example for demonstration purposes only. This component does not exist. Use this as a template reference for the expected output format when extracting real datasheets.
 
 ---
 
 ## 1. General Information
 
-**Component Family:** 74HC595
+**Component Family:** ABC4201
 
-**Full Part Name:** SNx4HC595 8-Bit Shift Registers With 3-State Output Registers
+**Full Part Name:** ABC4201 Dual 150mA Constant-Current LED Driver with PWM Dimming
 
 **Functional Description:**
-The SNx4HC595 devices contain an 8-bit, serial-in, parallel-out shift register that feeds an 8-bit D-type storage register. The storage register has parallel 3-state outputs. Separate clocks are provided for both the shift and storage register. The shift register has a direct overriding clear (SRCLR) input, serial (SER) input, and serial outputs for cascading. When the output-enable (OE) input is high, the outputs are in the high-impedance state. Both the shift register clock (SRCLK) and storage register clock (RCLK) are positive-edge triggered. If both clocks are connected together, the shift register is always one clock pulse ahead of the storage register.
+The ABC4201 is a dual-channel constant-current LED driver designed for automotive and industrial lighting applications. Each channel independently regulates up to 150mA of LED current with ±3% accuracy. The device features PWM dimming inputs for each channel, thermal shutdown protection, and open-load detection. Operating from a wide input voltage range of 6V to 40V, the ABC4201 uses external resistors to set the output current.
 
 **Variants Covered:**
-- `SN54HC595FK` - 20-pin LCCC package, -55°C to 125°C (military), 8.89 mm × 8.89 mm
-- `SN54HC595J` - 16-pin CDIP package, -55°C to 125°C (military), 21.34 mm × 6.92 mm
-- `SN74HC595N` - 16-pin PDIP package, -40°C to 85°C (commercial), 19.31 mm × 6.35 mm
-- `SN74HC595D` - 16-pin SOIC package, -40°C to 85°C (commercial), 9.90 mm × 3.90 mm
-- `SN74HC595DW` - 16-pin wide SOIC package, -40°C to 85°C (commercial), 10.30 mm × 7.50 mm
-- `SN74HC595DB` - 16-pin SSOP package, -40°C to 85°C (commercial), 6.20 mm × 5.30 mm
-- `SN74HC595PW` - 16-pin TSSOP package, -40°C to 85°C (commercial), 5.00 mm × 4.40 mm
+- `ABC4201N` - 8-pin PDIP package, -40°C to 125°C, 9.8 mm × 6.4 mm
+- `ABC4201D` - 8-pin SOIC package, -40°C to 125°C, 5.0 mm × 4.0 mm
+- `ABC4201DR` - 8-pin SOIC tape & reel, -40°C to 125°C, 5.0 mm × 4.0 mm
 
-Package suffix codes: FK=LCCC ceramic, J=CDIP ceramic, N=PDIP plastic DIP, D=SOIC, DW=Wide SOIC, DB=SSOP, PW=TSSOP
+Package suffix codes: N=PDIP plastic DIP, D=SOIC, DR=SOIC tape & reel
 
 **Key Features:**
-- 8-bit serial-in, parallel-out shift register
-- Wide operating voltage range of 2 V to 6 V
-- High-current 3-state outputs can drive up to 15 LSTTL loads
-- Low power consumption: 80 µA (maximum) ICC
-- tpd = 13 ns (typical) propagation delay at VCC = 5V
-- ±6 mA output drive at 5 V
-- Low input current: 1 µA (maximum)
-- Shift register has direct clear (SRCLR)
-- Independent shift and storage register clocks
-- Serial output (QH') for cascading multiple devices
-- CMOS compatible inputs and outputs
-- 3-state outputs for bus-oriented applications
+- Dual independent constant-current outputs
+- 150mA maximum output current per channel
+- Wide input voltage: 6V to 40V
+- ±3% current accuracy
+- PWM dimming capability (100Hz to 20kHz)
+- Open-load detection with status output
+- Thermal shutdown at 165°C
+- Low dropout voltage: 0.5V typical
+- External resistor current programming
 
 ---
 
 ## 2. Pinout
 
-### Pinout: 16-Pin PDIP/SOIC/SSOP/TSSOP (D, N, NS, DB, DW, PW Packages)
+### Pinout: 8-Pin PDIP/SOIC (N, D, DR Packages)
 
 | Pin | Name | Type | Active | Voltage | Description |
 |-----|------|------|--------|---------|-------------|
-| 1 | QB | Output | HIGH | VCC | Parallel data output Q1 |
-| 2 | QC | Output | HIGH | VCC | Parallel data output Q2 |
-| 3 | QD | Output | HIGH | VCC | Parallel data output Q3 |
-| 4 | QE | Output | HIGH | VCC | Parallel data output Q4 |
-| 5 | QF | Output | HIGH | VCC | Parallel data output Q5 |
-| 6 | QG | Output | HIGH | VCC | Parallel data output Q6 |
-| 7 | QH | Output | HIGH | VCC | Parallel data output Q7 |
-| 8 | GND | Power | - | 0V | Ground reference |
-| 9 | QH' | Output | HIGH | VCC | Serial data output (for cascading devices) |
-| 10 | $\overline{\text{SRCLR}}$ | Input | LOW | VCC | Shift register clear (active LOW) |
-| 11 | SRCLK | Input | HIGH | VCC | Shift register clock input (positive edge triggered) |
-| 12 | RCLK | Input | HIGH | VCC | Storage register clock / latch (positive edge triggered) |
-| 13 | $\overline{\text{OE}}$ | Input | LOW | VCC | Output enable (active LOW, enables 3-state outputs) |
-| 14 | SER | Input | HIGH | VCC | Serial data input |
-| 15 | QA | Output | HIGH | VCC | Parallel data output Q0 |
-| 16 | VCC | Power | - | 2-6V | Positive supply voltage |
+| 1 | VIN | Power | - | 6-40V | Supply voltage input |
+| 2 | PWM1 | Input | HIGH | 3.3V/5V | PWM dimming control for channel 1 (TTL/CMOS compatible) |
+| 3 | RSET1 | Analog | - | - | Current setting resistor connection for channel 1 |
+| 4 | GND | Power | - | 0V | Ground reference |
+| 5 | RSET2 | Analog | - | - | Current setting resistor connection for channel 2 |
+| 6 | PWM2 | Input | HIGH | 3.3V/5V | PWM dimming control for channel 2 (TTL/CMOS compatible) |
+| 7 | OUT2 | Output | - | VIN | Constant-current output for LED channel 2 |
+| 8 | OUT1 | Output | - | VIN | Constant-current output for LED channel 1 |
 
-**Note:** All 16-pin packages share the same pinout. Pin numbering is consistent across D, N, NS, DB, DW, and PW package types.
-
-### Pinout: 20-Pin LCCC (FK Package)
-
-For the 20-pin LCCC package, see page 3 of the datasheet. The FK package has the same signal functions but different physical pin numbers due to the leadless chip carrier format. Key differences: VCC on pin 20, GND on pin 10, signals distributed around the perimeter with NC (no connection) pins at positions 1, 6, 11, and 16.
+**Note:** All 8-pin packages share the same pinout.
 
 ---
 
@@ -78,226 +61,230 @@ For the 20-pin LCCC package, see page 3 of the datasheet. The FK package has the
 ### Operating Sequence
 
 **Initialization:**
-1. Apply power (VCC) between 2V and 6V to pin 16 (pin 20 for FK package)
-2. Connect GND (pin 8, pin 10 for FK) to ground
-3. Assert $\overline{\text{SRCLR}}$ LOW (pin 10) to clear shift register asynchronously (all bits set to 0)
-4. Release $\overline{\text{SRCLR}}$ to HIGH for normal operation
-5. Set $\overline{\text{OE}}$ LOW (pin 13) to enable outputs, or HIGH to keep outputs in high-impedance state
+1. Connect VIN (pin 1) to supply voltage (6V to 40V)
+2. Connect GND (pin 4) to ground
+3. Connect RSET resistors from pins 3 and 5 to GND to set desired LED current: ILED = 120mV / RSET
+4. Connect LED strings to OUT1 (pin 8) and OUT2 (pin 7), with LED cathodes to GND
+5. Apply HIGH to PWM inputs (pins 2, 6) to enable outputs, or LOW to disable
 
-**Normal Operation (Shifting and Latching Data):**
-1. Set serial data on SER input (pin 14)
-2. Apply positive-going edge on SRCLK (pin 11) to shift data into the first stage of shift register
-3. Data propagates through shift register on each subsequent SRCLK rising edge
-4. Repeat steps 1-2 for all 8 bits (each SRCLK rising edge advances the data)
-5. Apply positive-going edge on RCLK (pin 12) to transfer all shift register contents to storage register simultaneously
-6. Output pins QA-QH (pins 15, 1-7) update to reflect the stored data
+**Normal Operation:**
+1. The device regulates constant current through each LED string independently
+2. Current is set by formula: ILED = 120mV / RSET (example: RSET = 800Ω gives 150mA)
+3. When PWM input is HIGH, output is enabled and drives rated current
+4. When PWM input is LOW, output is disabled (high-impedance)
+5. PWM duty cycle controls average LED brightness (0-100% dimming)
 
-**Note:** Both clocks (SRCLK and RCLK) are independent. The shift register can continue shifting new data while the storage register/outputs remain stable. If clocks are tied together, the shift register is one clock pulse ahead of the storage register.
-
-**Cascading Multiple Devices:**
-1. Connect QH' (pin 9) of first device to SER (pin 14) of second device
-2. Connect all SRCLK pins (pin 11) together for common shift clock
-3. Connect all RCLK pins (pin 12) together for simultaneous latch update
-4. Optionally tie $\overline{\text{OE}}$ pins together for synchronized output enable
-5. For N devices cascaded: shift N×8 bits before pulsing RCLK to update all outputs
+**Dimming Operation:**
+1. Apply PWM signal (100Hz to 20kHz) to PWM1 and/or PWM2 inputs
+2. LED brightness is proportional to PWM duty cycle
+3. For maximum lifetime, use PWM frequencies between 200Hz and 2kHz
+4. Higher frequencies (>5kHz) reduce perceived flicker
 
 ### Timing Requirements
 
-**At VCC = 4.5V to 5.5V, SN74HC595, TA = 25°C:**
+**PWM Timing (TA = 25°C):**
 
-| Parameter | Symbol | Min | Max | Unit | Notes |
-|-----------|--------|-----|-----|------|-------|
-| Clock frequency | fclock | - | 25 | MHz | Typical at VCC = 4.5V |
-| SRCLK pulse width HIGH | tw(H) | 16 | 24 | ns | |
-| SRCLK pulse width LOW | tw(L) | 16 | 24 | ns | |
-| RCLK pulse width HIGH | tw(H) | 16 | 24 | ns | |
-| RCLK pulse width LOW | tw(L) | 16 | 24 | ns | |
-| SRCLR pulse width LOW | tw | 16 | 24 | ns | |
-| SER setup time (before SRCLK↑) | tsu | 20 | 30 | ns | |
-| SER hold time (after SRCLK↑) | th | 0 | - | ns | Zero minimum |
-| SRCLK↑ before RCLK↑ setup | tsu | 15 | 23 | ns | For stable data transfer |
-| SRCLR LOW before RCLK↑ | tsu | 10 | 15 | ns | |
-| SRCLR HIGH before SRCLK↑ | tsu | 10 | 15 | ns | Release clear before shifting |
-
-**Note:** The setup time from SRCLK↑ to RCLK↑ allows the storage register to receive stable data from the shift register. Clocks can be tied together, but shift register will be one clock ahead.
-
-**At VCC = 2.0V, TA = 25°C:**
-- Maximum clock frequency: 6 MHz (typical), 4.2 MHz (minimum)
-- Pulse widths increase: tw = 80 ns (min), 120 ns (max)
-- Setup times increase proportionally (tsu = 100-150 ns range)
-
-**Propagation Delays (VCC = 4.5V, TA = 25°C, CL = 50pF):**
-
-| From | To | Min | Typ | Max | Unit |
-|------|----|----|-----|-----|------|
-| SRCLK↑ | QH' | - | 17 | 32 | ns |
-| RCLK↑ | QA–QH | - | 17 | 30 | ns |
-| SRCLR↓ | QH' | - | 18 | 35 | ns |
-| $\overline{\text{OE}}$↓ | QA–QH enable | - | 15 | 30 | ns |
-| $\overline{\text{OE}}$↑ | QA–QH disable | - | 23 | 40 | ns |
-
-**Output Transition Times (CL = 50pF):**
-- Rise time (tr): 8 ns (typ), 12 ns (max)
-- Fall time (tf): 8 ns (typ), 12 ns (max)
+| Parameter | Symbol | Min | Typ | Max | Unit | Notes |
+|-----------|--------|-----|-----|-----|------|-------|
+| PWM frequency | fPWM | 100 | - | 20000 | Hz | Recommended 200Hz-2kHz |
+| PWM HIGH time | tON | 10 | - | - | µs | Minimum pulse width |
+| PWM LOW time | tOFF | 10 | - | - | µs | Minimum off time |
+| PWM rise/fall time | tr/tf | - | - | 1 | µs | Maximum slew rate |
+| Turn-on delay | tON_delay | - | 15 | 30 | µs | PWM↑ to output active |
+| Turn-off delay | tOFF_delay | - | 8 | 20 | µs | PWM↓ to output off |
 
 ### Timing Diagrams
 
-**Figure 6-1 (page 7): Complete Timing Diagram**
+**Figure 1: PWM Dimming Timing**
 
-Shows comprehensive timing relationships including:
-- Serial data (SER) shifting on SRCLK rising edges
-- Parallel outputs (QA-QH) updating on RCLK rising edge
-- Serial cascade output (QH') following shift register
-- Asynchronous clear function ($\overline{\text{SRCLR}}$)
-- 3-state output control ($\overline{\text{OE}}$)
+The timing diagram shows the relationship between PWM input and LED output current. When PWM goes HIGH, the output turns on after tON_delay and regulates to the programmed current level. When PWM goes LOW, the output turns off after tOFF_delay. The LED average brightness is proportional to the PWM duty cycle.
 
-The timing diagram illustrates proper setup/hold times, propagation delays, and the relationship between shift and storage register clocks. Hatched areas indicate high-impedance (3-state) output condition.
+*Refer to original datasheet Figure 1 for complete waveform diagram.*
 
 ### Functional Modes
 
-**Shift Mode:**
-- Data shifts into the shift register on each SRCLK positive edge
-- First stage receives SER data, subsequent stages shift existing data forward
-- QH' outputs the last bit shifted out (8th stage)
-- Storage register and parallel outputs (QA-QH) remain unchanged
-- Allows continuous data streaming
+**Normal Regulation Mode:**
+- PWM input HIGH
+- Output actively regulates constant current
+- Voltage drop across device: VIN - VLED_STRING (typically 0.5V to 2V)
+- Open-load detection active
 
-**Latch/Storage Mode:**
-- RCLK positive edge transfers all 8 bits from shift register to storage register in parallel
-- All outputs QA-QH update simultaneously (if $\overline{\text{OE}}$ is LOW)
-- Provides glitch-free output updates
-- Shift register can continue receiving new data during storage
+**PWM Dimming Mode:**
+- PWM input toggling between HIGH and LOW
+- Output switches between active regulation and high-impedance
+- Average LED current = ILED × (PWM duty cycle)
+- Reduced EMI compared to analog dimming
 
-**Clear Mode:**
-- $\overline{\text{SRCLR}}$ LOW asynchronously clears shift register (all stages → 0)
-- Clearing occurs immediately, independent of clocks
-- Storage register and outputs QA-QH are NOT affected by clear
-- QH' goes LOW when shift register is cleared
-- Used for initialization or error recovery
+**Shutdown Mode:**
+- PWM input LOW for >100ms
+- Output enters high-impedance state
+- Quiescent current: <50µA per channel
+- Device remains monitoring for PWM input
 
-**Output Enable/Disable Mode (3-State):**
-- $\overline{\text{OE}}$ LOW: Outputs QA-QH actively drive HIGH or LOW based on storage register
-- $\overline{\text{OE}}$ HIGH: Outputs QA-QH enter high-impedance (Hi-Z) state
-- Useful for bus sharing, preventing contention, or disabling outputs
-- Internal shift and storage registers continue to operate and retain data
-- QH' serial output is NOT affected by $\overline{\text{OE}}$ (always active)
-
-**Function Table (from page 12):**
-
-| SER | SRCLK | SRCLR | RCLK | OE | Function |
-|-----|-------|-------|------|----|----------|
-| X | X | X | X | H | Outputs QA–QH are disabled (Hi-Z) |
-| X | X | X | X | L | Outputs QA–QH are enabled |
-| X | X | L | X | X | Shift register is cleared |
-| L | ↑ | H | X | X | First stage goes LOW, other stages shift |
-| H | ↑ | H | X | X | First stage goes HIGH, other stages shift |
-| X | X | X | ↑ | X | Shift register data stored in storage register |
-
-(↑ = rising edge, H = HIGH, L = LOW, X = don't care)
+**Thermal Protection Mode:**
+- Junction temperature exceeds 165°C
+- Both outputs automatically disabled
+- Device resumes normal operation when temperature drops below 145°C (20°C hysteresis)
+- Automatic restart, no latch
 
 ---
 
 ## 4. Electrical Characteristics
 
 ### Absolute Maximum Ratings
-*(Over operating free-air temperature range unless otherwise noted)*
+*(All voltages referenced to GND)*
 
-**WARNING:** Stresses beyond those listed under Absolute Maximum Ratings may cause permanent damage to the device. These are stress ratings only. Functional operation of the device at these or any other conditions beyond those indicated under Recommended Operating Conditions is not implied. Exposure to absolute-maximum-rated conditions for extended periods may affect device reliability.
+**WARNING:** Stresses beyond Absolute Maximum Ratings may cause permanent damage. Functional operation is only guaranteed under Recommended Operating Conditions.
 
 | Parameter | Symbol | Min | Max | Unit | Notes |
 |-----------|--------|-----|-----|------|-------|
-| Supply voltage | VCC | -0.5 | 7.0 | V | |
-| Input clamp current | IIK | - | ±20 | mA | VI < 0 or VI > VCC |
-| Output clamp current | IOK | - | ±20 | mA | VO < 0 or VO > VCC |
-| Continuous output current | IO | - | ±35 | mA | VO = 0 to VCC |
-| Continuous current through VCC or GND | - | - | ±70 | mA | |
-| Junction temperature | TJ | - | 150 | °C | |
+| Supply voltage | VIN | -0.3 | 45 | V | |
+| Output voltage | VOUT | -0.3 | VIN+0.3 | V | |
+| PWM input voltage | VPWM | -0.3 | 6.0 | V | |
+| Output current | IOUT | - | 200 | mA | Continuous per channel |
+| Junction temperature | TJ | -55 | 165 | °C | |
 | Storage temperature | Tstg | -65 | 150 | °C | |
-
-**Note:** Input and output voltage ratings may be exceeded if input and output current ratings are observed.
+| ESD (HBM) | VESD | - | 2000 | V | Human Body Model |
 
 ### Recommended Operating Conditions
 
-| Parameter | Symbol | SN54HC595 | SN74HC595 | Unit | Conditions |
-|-----------|--------|-----------|-----------|------|------------|
-| | | Min / Nom / Max | Min / Nom / Max | | |
-| Supply voltage | VCC | 2 / 5 / 6 | 2 / 5 / 6 | V | |
-| Input HIGH voltage | VIH (VCC=2V) | 1.5 | 1.5 | V | Minimum |
-| | VIH (VCC=4.5V) | 3.15 | 3.15 | V | Minimum |
-| | VIH (VCC=6V) | 4.2 | 4.2 | V | Minimum |
-| Input LOW voltage | VIL (VCC=2V) | 0.5 | 0.5 | V | Maximum |
-| | VIL (VCC=4.5V) | 1.35 | 1.35 | V | Maximum |
-| | VIL (VCC=6V) | 1.8 | 1.8 | V | Maximum |
-| Input voltage | VI | 0 to VCC | 0 to VCC | V | |
-| Output voltage | VO | 0 to VCC | 0 to VCC | V | |
-| Input rise/fall time | Δt/Δv (VCC=2V) | - / 1000 | - / 1000 | ns | Maximum |
-| | Δt/Δv (VCC=4.5V) | - / 500 | - / 500 | ns | Maximum |
-| | Δt/Δv (VCC=6V) | - / 400 | - / 400 | ns | Maximum |
-| Operating temperature | TA | -55 / - / 125 | -40 / - / 85 | °C | |
+| Parameter | Symbol | Min | Typ | Max | Unit | Conditions |
+|-----------|--------|-----|-----|-----|------|------------|
+| Supply voltage | VIN | 6.0 | 12 | 40 | V | |
+| Output current | IOUT | 10 | - | 150 | mA | Per channel |
+| PWM input HIGH | VPWM_H | 2.0 | - | 5.5 | V | Enable output |
+| PWM input LOW | VPWM_L | 0 | - | 0.8 | V | Disable output |
+| Operating temperature | TA | -40 | 25 | 125 | °C | |
 
-**Important:** All unused inputs of the device must be held at VCC or GND to ensure proper device operation. See TI application report SCBA004, "Implications of Slow or Floating CMOS Inputs."
-
-### DC Electrical Characteristics
-*(Over recommended operating free-air temperature range, unless otherwise noted)*
-
-**At VCC = 5V, TA = 25°C:**
+### DC Characteristics
+*(VIN = 12V, TA = 25°C, unless otherwise noted)*
 
 | Parameter | Test Conditions | Min | Typ | Max | Unit |
 |-----------|----------------|-----|-----|-----|------|
-| VOH (IOH = -20 µA) | VI = VIH or VIL | 4.4 | 4.999 | - | V |
-| VOH (QH', IOH = -4 mA) | VCC = 4.5V | 3.98 | 4.3 | - | V |
-| VOH (QA-QH, IOH = -6 mA) | VCC = 4.5V | 3.98 | 4.3 | - | V |
-| VOL (IOL = 20 µA) | VI = VIH or VIL | - | 0.001 | 0.1 | V |
-| VOL (QH', IOL = 4 mA) | VCC = 4.5V | - | 0.17 | 0.4 | V |
-| VOL (QA-QH, IOL = 6 mA) | VCC = 4.5V | - | 0.17 | 0.4 | V |
-| II (input leakage) | VI = VCC or 0, VCC = 6V | - | ±0.1 | ±1000 | nA |
-| IOZ (3-state leakage) | VO = VCC or 0, VCC = 6V | - | ±0.01 | ±10 | µA |
-| ICC (quiescent) | VI = VCC or 0, IO = 0, VCC = 6V | - | 8 | 80 | µA |
-| CI (input capacitance) | VCC = 2V to 6V | - | 3 | 10 | pF |
+| Output current accuracy | RSET = 800Ω (150mA) | -3 | - | +3 | % |
+| Reference voltage | VREF at RSET pin | 115 | 120 | 125 | mV |
+| Dropout voltage | IOUT = 150mA | - | 0.5 | 1.0 | V |
+| PWM input current | VPWM = 5V | - | 15 | 30 | µA |
+| Quiescent current | PWM LOW, no load | - | 40 | 80 | µA |
+| Operating current | Both channels ON, no LEDs | - | 2.5 | 4.0 | mA |
+| Thermal shutdown | - | 155 | 165 | 175 | °C |
+| Thermal hysteresis | - | 15 | 20 | 25 | °C |
 
-**At VCC = 6V:**
-- VOH (QH', IOH = -5.2 mA): 5.48V typ, 5.8V min
-- VOH (QA-QH, IOH = -7.8 mA): 5.48V typ, 5.8V min
-- VOL (QH', IOL = 5.2 mA): 0.15V typ, 0.26V max
-- VOL (QA-QH, IOL = 7.8 mA): 0.15V typ, 0.26V max
+### AC Characteristics
 
-**Drive Capabilities:**
-- Can drive up to 15 LSTTL loads
-- Output source/sink current: ±6 mA at VCC = 5V
+| Parameter | Conditions | Min | Typ | Max | Unit |
+|-----------|-----------|-----|-----|-----|------|
+| PWM-to-output delay | tON, CL = 100pF | - | 15 | 30 | µs |
+| Output-off delay | tOFF, CL = 100pF | - | 8 | 20 | µs |
+| Current settling time | 10% to 90% | - | 50 | 100 | µs |
+| Line regulation | VIN = 6V to 40V | - | 0.1 | 0.5 | %/V |
 
-### AC Electrical Characteristics / Switching Characteristics
-*(Over recommended operating free-air temperature range)*
+---
 
-**At VCC = 4.5V to 5.5V, TA = 25°C, CL = 50pF:**
+## 5. Package Information
 
-| Parameter | From | To | Min | Typ | Max | Unit |
-|-----------|------|----|----|-----|-----|------|
-| fmax | - | - | 21 | 31 | - | MHz |
-| tpd | SRCLK | QH' | - | 17 | 32 | ns |
-| tpd | RCLK | QA–QH | - | 17 | 30 | ns |
-| tPHL | SRCLR | QH' | - | 18 | 35 | ns |
-| ten | $\overline{\text{OE}}$ | QA–QH | - | 15 | 30 | ns |
-| tdis | $\overline{\text{OE}}$ | QA–QH | - | 23 | 40 | ns |
-| tt (QA–QH) | - | - | - | 8 | 12 | ns |
-| tt (QH') | - | - | - | 8 | 15 | ns |
+### Available Packages
 
-**At CL = 150pF (heavier load):**
-- tpd (RCLK to QA-QH): 22 ns (typ), 40 ns (max)
-- ten: 23 ns (typ), 40 ns (max)
-- tt (QA-QH): 17 ns (typ), 42 ns (max)
+**8-Pin PDIP (N Package):**
+- Dimensions: 9.8 mm (L) × 6.4 mm (W) × 3.3 mm (H)
+- Pin pitch: 2.54 mm (0.1")
+- Lead spacing: 7.62 mm (0.3")
+- Thermal resistance (θJA): 95°C/W (free air)
+- Weight: 0.65 grams
 
-**Operating Characteristics:**
-- Power dissipation capacitance (Cpd): 400 pF (typical, no load)
+**8-Pin SOIC (D, DR Packages):**
+- Dimensions: 5.0 mm (L) × 4.0 mm (W) × 1.5 mm (H)
+- Pin pitch: 1.27 mm (50 mil)
+- Lead spacing: 5.3 mm
+- Thermal resistance (θJA): 120°C/W (free air), 45°C/W (with copper pour)
+- MSL: Level 1 (unlimited floor life)
+- Weight: 0.095 grams
+
+### Thermal Characteristics
+
+- Junction-to-ambient thermal resistance (PDIP): 95°C/W
+- Junction-to-ambient thermal resistance (SOIC): 120°C/W without heatsinking
+- Junction-to-ambient thermal resistance (SOIC with copper): 45°C/W with 1 sq. in. copper pour
+- Maximum power dissipation (TA=25°C, PDIP): 1.3W
+- Maximum power dissipation (TA=25°C, SOIC): 1.0W
+
+**Note:** Thermal performance greatly improves with copper PCB area connected to GND pin.
+
+---
+
+## 6. Application Examples
+
+### Typical Application Circuit
+
+**Basic Dual-Channel LED Driver:**
+
+```
+VIN (12V) ──┬─── Pin 1 (VIN)
+            │
+LED1+ ──────┤
+LED1- ───── Pin 8 (OUT1)
+
+LED2+ ──────┤
+LED2- ───── Pin 7 (OUT2)
+
+MCU_PWM1 ── Pin 2 (PWM1)
+MCU_PWM2 ── Pin 6 (PWM2)
+
+         ┌─ Pin 3 (RSET1) ── 800Ω ── GND
+         │
+GND ────┼─ Pin 4 (GND)
+         │
+         └─ Pin 5 (RSET2) ── 800Ω ── GND
+```
+
+Component values:
+- RSET1, RSET2 = 800Ω for 150mA LED current (120mV / 800Ω = 150mA)
+- LED forward voltage: 3V per LED, max 10 LEDs in series per channel
+- VIN must be >VLED_total + 1V (headroom)
+
+### Current Setting
+
+**ILED = 120mV / RSET**
+
+Common configurations:
+- 50mA: RSET = 2.4kΩ
+- 100mA: RSET = 1.2kΩ
+- 150mA: RSET = 800Ω
+
+Use 1% tolerance resistors for best current accuracy.
+
+### PCB Layout Recommendations
+
+1. **Thermal management:**
+   - Connect GND pin (pin 4) to large copper pour on PCB
+   - Use thermal vias from GND pad to bottom layer if possible
+   - Minimum 1 square inch of copper per watt dissipated
+
+2. **PWM signal routing:**
+   - Route PWM traces away from output pins to minimize coupling
+   - Use ground plane under PWM traces
+   - Keep PWM trace length <6 inches for best noise immunity
+
+3. **Decoupling:**
+   - Place 10µF ceramic capacitor (X7R) close to VIN pin (within 10mm)
+   - Optional: Add 0.1µF ceramic in parallel for high-frequency noise
+   - Use low-ESR capacitors rated for VIN + 20% margin
+
+4. **RSET resistor placement:**
+   - Place RSET resistors within 5mm of RSET pins
+   - Route to GND with short, direct traces
+   - Avoid routing high-current traces near RSET pins
+
+### Application Notes
+
+- **Maximum LED String:** Up to 10 LEDs in series (assumes 3V forward voltage per LED, VIN=40V)
+- **Parallel LEDs:** Not recommended; use separate channels or external current balancing
+- **Inductive loads:** Place 100nF snubber capacitor across OUT to GND if driving inductive loads
+- **Open load detection:** Monitor voltage at OUT pins; >VIN-1V indicates open LED string
+- **PWM frequency selection:** Use 200Hz-1kHz for best efficiency; >5kHz may reduce EMI
 
 ---
 
 **End of Datasheet Extraction**
 
-**Note:** This summary is extracted from the SN74HC595 datasheet (SCLS041J, October 2021). For complete information including:
-- Detailed timing diagrams (Figure 6-1, page 7)
-- Parameter measurement waveforms (page 10)
-- Complete package mechanical drawings (pages 23-40)
-- Full electrical specifications across all temperatures and voltages
-- Application circuit details (pages 13-14)
-
-Please refer to the original datasheet at: https://www.ti.com/lit/ds/symlink/sn74hc595.pdf
+> **REMINDER:** This is a fictional component created for demonstration purposes. When extracting real datasheets, always verify critical information (pinouts, electrical characteristics, timing) with the original manufacturer's datasheet. This example shows the expected format and structure for datasheet extraction output.
