@@ -17,11 +17,11 @@ If `$ARGUMENTS` is empty, ask the user what decision they want to record — spe
 
 ## Orientation
 
-ADRs sit **above** specs in the documentation stack. A spec describes *what* to build; the ADR it cites describes *which constraints shaped it*. When you draft an ADR, think of yourself as writing policy that will bind future specs and agents — not just documenting a past conversation.
+ADRs are **standalone policy**. Each one records a constraint and the reasoning behind it; it does not track the downstream specs, plans, or tasks that inherit that constraint. The citation direction runs the other way: a spec that is shaped by an ADR names that ADR in its own frontmatter. The link lives on the churning side (specs get renamed, split, archived), not the stable side (accepted ADRs are append-only history). Once an ADR is accepted you do not revise it when downstream artifacts move around.
 
-The primary reader of an ADR in this project is another AI agent picking up the codebase weeks or months from now. That agent will decide whether a proposed change respects or violates the decision, and whether a driver has shifted enough that the ADR should be revisited. Write for that reader: state the drivers precisely enough that an agent can evaluate "does this still hold?", name the rejected options so the agent doesn't re-propose them, and make the `governs:` links explicit so the agent can navigate from any spec back to the policy shaping it.
+The primary reader of an ADR in this project is another AI agent picking up the codebase weeks or months from now. That agent will decide whether a proposed change respects or violates the decision, and whether a driver has shifted enough that the ADR should be revisited. Write for that reader: state the drivers precisely enough that an agent can evaluate "does this still hold?", and name the rejected options so the agent doesn't re-propose them.
 
-Use MADR format with rich frontmatter. The `governs:` field is the bridge: populate it with paths to the spec files, plan/tasks artifacts, or feature directories this ADR constrains, so downstream tooling can walk the ADR↔spec graph.
+Use MADR format with rich frontmatter. Link only to other ADRs via `supersedes`, `superseded-by`, and `related` — those edges are stable and directionally correct. Do not embed paths to specs, plans, or task files; those are forward-references that rot.
 
 ## Workflow
 
@@ -69,7 +69,7 @@ This outputs JSON with `ADR_FILE`, `ADR_DIR`, `ADR_ID`, and `ADR_NUMBER`. Use `A
 Before filling in the template, investigate the project to ground the ADR in reality:
 
 - **Code paths the decision affects** — modules, services, or directories that will change
-- **Existing specs and plans** — `docs/specs/`, `specs/`, spec-kit artifacts, `plan.md`, `tasks.md`; note paths to cite in `governs:`
+- **Existing specs and plans** — scan `docs/specs/`, `specs/`, spec-kit artifacts, `plan.md`, `tasks.md` for context on how the decision will land in practice, but do **not** record their paths in the ADR; forward-references to specs rot as specs are renamed or archived
 - **Configuration and infra** — Dockerfiles, Terraform, CI pipelines, package manifests
 - **Prior discussion artifacts** — commit messages, PR descriptions, existing docs on the topic
 - **Operational realities** — observability, runbooks, deployment model that constrain viable options
@@ -85,7 +85,6 @@ Edit the scaffolded file, replacing every placeholder with project-specific cont
   - `status`: start as `proposed` unless the user explicitly says the decision is already made
   - `deciders`: names/handles of the people deciding, from the user's input — do not guess
   - `supersedes` / `superseded-by` / `related`: ADR IDs you identified in Step 2
-  - `governs`: paths to spec files, plan/tasks artifacts, or feature directories this ADR constrains (relative to repo root)
   - `tags`: short nouns (e.g., `storage`, `observability`, `build`) — reuse vocabulary from prior ADRs
 - **Context and Problem Statement**: the forces at play, grounded in the codebase research
 - **Decision Drivers**: specific, measurable where possible
@@ -93,8 +92,8 @@ Edit the scaffolded file, replacing every placeholder with project-specific cont
 - **Decision Outcome**: which option won and *which drivers tipped the balance* — a reader should be able to tell whether changing a driver would invalidate this decision
 - **Consequences**: honest positives, negatives, and risks; if there are no negatives, you haven't thought hard enough
 - **Pros and Cons of the Options**: per-option analysis, including the rejected ones
-- **Implementation Notes**: how the decision cascades into specs/code; reiterate the `governs:` links in prose
-- **References**: links to discussions, PRs, issues, prior ADRs, spec files
+- **Implementation Notes**: how the decision cascades into code and operational policy — modules or services affected, invariants future changes must respect, and leading indicators that would prompt revisiting. Do not enumerate spec paths here; that coupling belongs on the spec side.
+- **References**: links to discussions, PRs, issues, and prior ADRs
 
 > [!NOTE]
 > If `$ARGUMENTS` or the conversation does not provide enough material for Decision Drivers or Consequences, stop and ask the user. An ADR with hand-wavy drivers and made-up consequences is worse than no ADR.
@@ -125,7 +124,7 @@ Read the project's root `CLAUDE.md`. Look for an existing `## Architectural Deci
 ```markdown
 ## Architectural Decisions
 
-ADRs live in `<adr-dir>/`. Read the relevant ADRs before proposing architectural changes — they encode constraints and rejected alternatives. When writing or modifying specs, check the `governs:` frontmatter of each ADR to see which specs it binds.
+ADRs live in `<adr-dir>/`. Read the relevant ADRs before proposing architectural changes — they encode constraints and rejected alternatives. When writing or modifying a spec, cite the ADRs that constrained it in the spec's own frontmatter; ADRs do not track their downstream consumers.
 
 | ADR | When this applies |
 |---|---|
@@ -139,7 +138,6 @@ The "When this applies" column should describe the *situation* that should make 
 Show the user the completed ADR and ask whether the drivers, rejected alternatives, and consequences match their intent. Explicitly flag:
 
 - Any section where you had to make assumptions due to limited information
-- The `governs:` paths you selected (these are load-bearing for the ADR↔spec graph)
 - Any supersede links you applied to prior ADRs
 
 Only change `status:` from `proposed` to `accepted` after the user confirms — do not do it preemptively.

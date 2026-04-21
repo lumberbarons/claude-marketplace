@@ -1,18 +1,19 @@
 # decisions
 
-Architectural Decision Record (ADR) creation and maintenance tooling for Claude Code.
+Architectural Decision Record (ADR) creation, maintenance, and enforcement tooling for Claude Code.
 
 ## Overview
 
-ADRs capture the *why* behind significant architectural choices — constraints, trade-offs, rejected alternatives — and act as the policy layer above specs. A spec describes *what* to build; the ADR it cites describes *which constraints shaped it*. When decisions live only in Slack threads or a reviewer's memory, future agents re-litigate settled questions or quietly drift from intent. This plugin produces structured, version-controlled ADRs that agents can read and honor.
+ADRs capture the *why* behind significant architectural choices — constraints, trade-offs, rejected alternatives — and act as standalone, append-only policy. A spec describes *what* to build and cites the ADRs that constrained it; the ADR itself does not track downstream specs. When decisions live only in Slack threads or a reviewer's memory, future agents re-litigate settled questions or quietly drift from intent. This plugin produces structured, version-controlled ADRs that agents can read and honor.
 
-The output is MADR-style (Markdown Architecture Decision Records) with rich frontmatter so ADRs form a navigable graph: `supersedes`, `superseded-by`, `related`, and `governs` (linking to spec files the ADR constrains).
+The output is MADR-style (Markdown Architecture Decision Records) with rich frontmatter. ADRs link only to other ADRs — via `supersedes`, `superseded-by`, and `related` — keeping the graph stable and directionally correct. Spec-to-ADR citation is the responsibility of the spec side.
 
 ## Skills
 
 | Skill | Description | Model-Invocable |
 |-------|-------------|-----------------|
 | `/decisions:create-adr` | Create a new ADR from a standard MADR template, researching context from the codebase and registering it in the project's CLAUDE.md | Yes |
+| `/decisions:review-policy` | Review a code change (working diff, PR, or path) against the accepted ADRs and report violations, invariant erosions, drift toward rejected options, and driver-shift candidates for ADR revisit | Yes |
 
 ## Usage
 
@@ -20,23 +21,28 @@ The output is MADR-style (Markdown Architecture Decision Records) with rich fron
 /decisions:create-adr use Postgres for the event store instead of DynamoDB
 /decisions:create-adr adopt trunk-based development with short-lived feature flags
 /decisions:create-adr replace the custom retry wrapper with Temporal workflows
+
+/decisions:review-policy                   # review the current working diff against all accepted ADRs
+/decisions:review-policy main...HEAD       # review a specific ref range
+/decisions:review-policy PR#42             # review a pull request
+/decisions:review-policy --adr ADR-0007    # review the diff against a single ADR
 ```
 
-If you drop the argument, the skill will ask what decision you want to record.
+If `create-adr` is called without an argument, it asks what decision to record. If `review-policy` is called without an argument, it defaults to the working diff against the repo's base branch.
 
 ## Template Structure
 
 Every ADR follows MADR conventions:
 
-- **Frontmatter** — `id`, `title`, `status`, `date`, `deciders`, `supersedes`, `superseded-by`, `related`, `governs`, `tags`
+- **Frontmatter** — `id`, `title`, `status`, `date`, `deciders`, `supersedes`, `superseded-by`, `related`, `tags`
 - **Context and Problem Statement** — forces in play, constraints, the problem
 - **Decision Drivers** — the criteria that matter
 - **Considered Options** — options under evaluation, with one-line summaries
 - **Decision Outcome** — which option won, and why against the drivers
 - **Consequences** — positive, negative, and risks accepted
 - **Pros and Cons of the Options** — per-option analysis
-- **Implementation Notes** — how the decision cascades into specs/code
-- **References** — links to discussions, PRs, specs
+- **Implementation Notes** — how the decision cascades into code and operational policy
+- **References** — links to discussions, PRs, and prior ADRs
 
 ## ADR Directory Convention
 
@@ -47,9 +53,9 @@ The skill looks for an existing ADR directory in this order:
 3. `docs/adrs/` (if it exists)
 4. Asks the user, defaulting to `docs/adr/`
 
-## The `governs:` frontmatter field
+## ADR ↔ spec relationship
 
-This is the bridge between ADRs and specs. Populate `governs:` with paths to spec files, `spec.md`/`plan.md` artifacts, or feature directories the ADR constrains. Downstream tooling (and future agents) can walk the relationship in either direction: given a spec, find the ADRs that govern it; given an ADR, find the specs it shapes.
+ADRs do not track the specs that inherit their constraints. Specs cite ADRs from their own frontmatter; ADRs cite only other ADRs. This keeps ADRs stable (accepted decisions are append-only history) and puts the maintenance burden on the churning side, where it belongs. To find which specs a given ADR constrains, grep spec frontmatter for the ADR id.
 
 ## Registration in CLAUDE.md
 

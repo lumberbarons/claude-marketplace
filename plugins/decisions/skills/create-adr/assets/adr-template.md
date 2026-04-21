@@ -7,7 +7,6 @@ deciders: []
 supersedes: []
 superseded-by: []
 related: []
-governs: []
 tags: []
 ---
 
@@ -71,7 +70,7 @@ Chosen option: **[Option X]**
 
 ## Implementation Notes
 
-[How this decision cascades into specs and code. List the specs it governs (also in the `governs:` frontmatter), the migration path if it supersedes an earlier ADR, and any leading indicators that would prompt revisiting.]
+[How this decision cascades into code and operational policy. Describe the modules or services affected, the invariants future changes must respect, the migration path if this ADR supersedes an earlier one, and any leading indicators that would prompt revisiting. Do not list spec paths here — specs that inherit this decision cite it from their own frontmatter.]
 
 ## References
 

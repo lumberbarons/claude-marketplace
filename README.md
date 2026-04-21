@@ -64,11 +64,12 @@ Review skills that surface design, coverage, doc-structure, and logging issues t
 
 ### [decisions](plugins/decisions/)
 
-Architectural Decision Record (ADR) creation and maintenance tooling. Produces MADR-format ADRs with rich frontmatter (`supersedes`, `superseded-by`, `related`, `governs`) so decisions form a navigable graph linked to the specs they constrain.
+Architectural Decision Record (ADR) authoring, maintenance, and enforcement. Produces MADR-format ADRs as standalone, append-only policy with ADR-to-ADR relationship tracking (`supersedes`, `superseded-by`, `related`). Specs cite the ADRs that constrained them; ADRs do not track their downstream consumers. Includes a review skill that audits a code change against the accepted ADRs and flags violations, erosions, drift, and driver-shift candidates.
 
 | Component | Type | Description |
 |-----------|------|-------------|
 | `decisions:create-adr` | Skill | Create a new ADR from a MADR template, research context from the codebase, and register it in the project's CLAUDE.md |
+| `decisions:review-policy` | Skill | Review a code change (working diff, PR, or path) against the accepted ADRs, flagging violations, invariant erosions, drift toward rejected options, and driver-shift candidates for ADR revisit |
 
 ## Usage
 
