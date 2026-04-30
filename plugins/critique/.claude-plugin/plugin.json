@@ -1,7 +1,7 @@
 {
   "name": "critique",
   "description": "Review skills for code, tests, documentation, and observability. Finds design, coverage, doc-structure, and logging/error-message issues that linters miss.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": {
     "name": "lumberbarons"
   }

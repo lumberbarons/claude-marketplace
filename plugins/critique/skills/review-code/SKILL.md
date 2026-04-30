@@ -10,19 +10,6 @@ Review code for design and architecture issues that linters and static analysis 
 > [!IMPORTANT]
 > Consult [REFERENCE.md](REFERENCE.md) for the expected output format and level of detail.
 
-## User Input
-
-```text
-$ARGUMENTS
-```
-
-You **MUST** consider the user input before proceeding (if not empty).
-
-## Argument Parsing
-
-Parse `$ARGUMENTS` for:
-- **Path**: Required path to review (file or directory)
-
 ## Prerequisites
 
 This review assumes standard tooling is already running:
@@ -37,7 +24,7 @@ If these aren't set up, recommend adding them before this review.
 
 ### Step 1 — Discover source files
 
-Find all source files in the specified path, excluding test files, vendored/generated code, and files that are purely configuration. Record the full file list and count.
+`$ARGUMENTS` is the path (file or directory) to review. Find all source files there, excluding test files, vendored/generated code, and files that are purely configuration. Record the full file list and count.
 
 ### Step 2 — Choose execution strategy
 
@@ -69,8 +56,8 @@ Each subagent prompt MUST include:
 3. The **Severity** section from this skill — copy it verbatim into the prompt
 4. The **Prerequisites** note — remind the subagent to skip mechanical checks that linters/formatters/scanners handle
 5. The structured output format below
-6. The explicit instruction: **"Do NOT use the Bash tool. Do NOT run any shell commands. Use only Read, Grep, and Glob tools. Return findings only."**
-7. The explicit instruction: **"For every P3 finding, you MUST state a concrete consequence in the `explanation` field: 'a caller/maintainer would likely \<specific mistake\> because of this.' Omit P3 findings that lack this claim."**
+6. The explicit instruction: **"Do NOT use the Bash tool. Do NOT run any shell commands. Use only Read, Grep, and Glob tools. Return findings only."** — the review is static analysis of source files, so shell access adds latency and side-effect risk without enabling anything the read-only tools can't already do.
+7. The explicit instruction: **"For every P2 and P3 finding, you MUST state a concrete consequence in the `explanation` field: name a specific extension, change, or maintenance scenario where a caller or maintainer would predictably go wrong because of this design (e.g., 'adding a CLI entry point would force re-implementing the discount logic that's currently embedded in the HTTP handler'). Omit findings that lack this claim. The single exception is P1 findings (security design flaws and tests-cannot-be-written designs carry their consequence implicitly)."**
 8. The explicit instruction: **"For the `pattern` field, use a short, reusable label that names the underlying anti-pattern (e.g., 'module-scope side effects', 'mixed abstraction in handlers'). If two findings in your batch stem from the same root cause, they MUST use the same pattern label."**
 
 Instruct each subagent to return findings in this exact delimited format (one block per finding):
@@ -184,9 +171,46 @@ Linters catch empty catches; this checks *appropriateness*:
 
 ## Severity
 
-- **P1**: Code that **cannot** be tested without heroic workarounds (no seam exists even with standard mocking), or security design flaws (authentication bypass, privilege escalation by design). A module-level singleton that can be mocked with `vi.mock()` or `monkey.Patch` is **not** P1 — that's testable, just inconvenient. P1 means "there is no way to isolate this code for testing" or "this design is a security vulnerability."
-- **P2**: SRP violations, mixed abstractions, leaky APIs, testability friction (module-level state, hard-coded dependencies that require mocking at import time)
-- **P3**: Naming or API issues where you can state a **concrete consequence** — i.e., "a caller/maintainer would likely \<specific mistake\> because of this." Do **not** raise P3 for names or patterns that are merely suboptimal without a realistic misuse or maintenance hazard.
+Severity is assigned **per-finding by predictable consequence**, not by category. Pattern labels exist only to drive Pattern Collapsing — they do not set severity. Two findings sharing a pattern label can have different severities if their consequences differ in concreteness or stakes.
+
+The driving question for every P2/P3 finding: **"Name a specific extension, change, or maintenance scenario that would predictably go wrong because of this design."** If you can only say "this could be cleaner" without naming a realistic scenario, the finding is below the reporting bar — omit it. P1 findings carry their consequence implicitly (the code can't be tested at all, or the design is a security vulnerability).
+
+### P1 — the design blocks testing entirely, or it is a security vulnerability
+- Code that **cannot** be tested without heroic workarounds — no seam exists even with standard mocking. A module-level singleton that can be mocked with `vi.mock()` or `monkey.Patch` is **not** P1 — that's testable, just inconvenient. P1 means "there is no way to isolate this code for testing."
+- Security design flaws: authentication bypass by design, privilege escalation paths, secrets in code that escape into logs/responses, missing authorization on privileged operations.
+
+### P2 — a specific reasonable change predictably goes wrong because of this design
+The design imposes a real cost on a real future scenario you can name. Reserved for:
+- **SRP violations with named ripple**: "If pricing rules change, this validation function also needs review" — name the actual coupling, not just "function does multiple things."
+- **Mixed abstractions with named cost**: "Adding a CLI entry point would require re-implementing the business logic currently interleaved with HTTP parsing" — name the entry point, transport, or extension that the mixing blocks.
+- **Leaky APIs with named misuse**: "Callers must remember to call `Init()` before `Run()` and nothing enforces it; this has already caused bug X / will trip up the next implementer of feature Y."
+- **Testability friction with named cost**: module-level state or hard-coded dependencies that force mocking at import time, where you can name the test scenario this prevents from being expressed cleanly.
+- **Inconsistent patterns across similar APIs**: name the specific divergence and the maintenance cost ("`UserService.Get` returns `(User, error)` but `OrderService.Fetch` returns `(*Order, bool)`; consumers writing generic helpers cannot share code").
+
+### P3 — a smaller, more peripheral consequence
+Same shape as P2 but the named consequence is narrower or affects fewer scenarios. Naming and minor API issues live here.
+- "A caller would likely call `processOrder` thinking it does X when it actually does Y."
+- A divergent name in one place that doesn't follow codebase convention; a maintainer skimming will misclassify the function's role.
+- Suboptimal but workable patterns where the consequence affects readability more than future change cost.
+
+### The P2/P3 boundary
+Ask whether the named consequence affects a **reasonable extension or change someone is likely to make** (P2) or just a **single reader's first impression** (P3). A design issue that forces a future refactor to land everywhere is P2; a design issue that just reads awkwardly is P3.
+
+If you cannot name *any* specific consequence, the finding is below the reporting bar — omit it entirely. Do not promote "this could be cleaner" to P3 just because it sounds mild.
+
+---
+
+## Reporting Cap
+
+After Pattern Collapsing, cap the report at **10 findings total**. The cap is a ceiling, not a target — if there are only 4 real findings, report 4. **Do not manufacture filler to reach 10.** A short report of high-impact findings beats a padded report of weak ones, and a padded report trains the reader to ignore the long tail.
+
+Selection rules, applied in order:
+
+1. **Include every P1.** Never truncate a P1 — security design flaws and untestable code don't belong in a tail. If P1s alone exceed 10, report all of them and skip P2/P3 entirely.
+2. **Fill remaining budget with P2s, then P3s**, ordered by impact within each tier. Impact favors findings whose named consequence affects more scenarios, more callers, or wider blast radius — and pattern-collapsed findings that span more locations.
+3. **Footer the tail.** When findings exceed the cap, end the report with: `Note: N additional findings omitted (X P2, Y P3) — re-run after addressing these to surface what remains.` When findings fit under the cap, no footer is needed.
+
+The reasoning: design changes have wider blast radius than test fixes, so churn matters more here, not less. A 30-finding design review is unmergeable as one PR — it will age out, get partially applied, or split attention away from the highest-impact changes. Iterating in batches of 10 is what humans actually do, and re-running after fixes surfaces issues that only become visible once the most pressing ones are out of the way (often a single cross-cutting refactor dissolves several adjacent findings). The cap also creates healthy pressure against the "asked to find things, so finds things" failure mode — if your candidate finding wouldn't make it into the top 10, it probably isn't worth the reader's attention.
 
 ---
 

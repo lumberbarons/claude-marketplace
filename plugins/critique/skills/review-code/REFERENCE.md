@@ -54,3 +54,13 @@ Do not include items that passed review. Start with "N files reviewed, M issues 
 ### No tables
 
 Do not include summary tables or issue tables. Findings are the only output.
+
+### Truncation footer when the cap kicks in
+
+When findings exceed the reporting cap (see SKILL.md → Reporting Cap), end the report with a single-line footer:
+
+```
+Note: 7 additional findings omitted (4 P2, 3 P3) — re-run after addressing these to surface what remains.
+```
+
+The footer is omitted when all findings fit under the cap. The header count reflects the *reported* findings; the footer count reflects the *omitted* tail.
