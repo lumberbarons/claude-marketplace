@@ -20,7 +20,7 @@ A package-level `testDB` variable is opened in TestMain and reused across all te
 ### 2. [P2] Assertion checks error only, ignores result
 **Location:** tests/order/service_test.go:78
 
-TestPlaceOrder calls PlaceOrder and asserts `err == nil` but never inspects the returned order. If the function silently returns a zero-value order, this test still passes. Assert on expected fields (ID, total, status) to catch real regressions.
+TestPlaceOrder calls PlaceOrder and asserts `err == nil` but never inspects the returned order. The test claims to verify order placement, but if PlaceOrder were changed to `return Order{}, nil` (silently returning a zero-value order), this test would still incorrectly pass — the central contract is unverified. Assert on expected fields (ID, total, status) to catch real regressions.
 
 ### 3. [P2] Test name doesn't communicate intent
 **Location:** tests/order/handler_test.go:12
@@ -54,3 +54,13 @@ Do not include items that passed review. Start with "N files reviewed, M issues 
 ### No tables
 
 Do not include summary tables or issue tables. Findings are the only output.
+
+### Truncation footer when the cap kicks in
+
+When findings exceed the reporting cap (see SKILL.md → Reporting Cap), end the report with a single-line footer:
+
+```
+Note: 7 additional findings omitted (4 P2, 3 P3) — re-run after addressing these to surface what remains.
+```
+
+The footer is omitted when all findings fit under the cap. The header count reflects the *reported* findings; the footer count reflects the *omitted* tail.
