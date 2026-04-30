@@ -1,6 +1,6 @@
 ---
 name: review-tests
-description: Review tests for completeness, usefulness, isolation, and readability. Use when asked to review tests, check test quality, audit test coverage, or validate test files.
+description: Reviews tests for issues that coverage tools miss — falsifiability, isolation hazards, dead expectations, tautological assertions, missing edge cases, and unclear test names. Use when asked to review tests, audit a test suite, check test quality, validate test isolation, or check whether tests actually catch regressions. Also invoke when a user says things like "review these tests", "audit tests/", "are these tests any good", "do these tests catch real bugs", "check test isolation", "is this tested", or asks for a quality-level (not coverage-percentage) read of unit, integration, or e2e tests.
 ---
 
 # Tests Review
@@ -10,15 +10,35 @@ Review tests in the specified path for quality issues.
 > [!IMPORTANT]
 > Consult [REFERENCE.md](REFERENCE.md) for the expected output format and level of detail.
 
+## Scope
+
+Determine the review scope before discovering files:
+
+- If `$ARGUMENTS` is non-empty, treat it as a path (file or directory) and run:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh "$ARGUMENTS"
+  ```
+- If `$ARGUMENTS` is empty, scope to files added or modified on the current branch relative to the default branch:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh
+  ```
+
+Handle the script's exit codes:
+- **0 with output** — use the listed paths as input to the discovery step below.
+- **0 with empty output** — branch has no diff vs the default branch. Tell the user and ask which path to review.
+- **non-zero** — script prints a message to stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay the message and ask the user which path to review.
+
+The script returns paths language-blind. The discovery step below filters to test files; if the filter matches nothing but the script's output was non-empty, the language may not be in the pattern list — apply judgment to identify test files in the output.
+
 ## Workflow
 
 ### Step 1 — Discover test files
 
-`$ARGUMENTS` is the path (file or directory) to review. Find all test files there using language-appropriate patterns: `*_test.go`, `test_*.py`, `*_test.py`, `*.test.ts`, `*.test.js`, `*.spec.ts`, `*.spec.js`, `__tests__/**`, etc. Record the full file list and count.
+From the script's output, filter to test files using language-appropriate patterns: `*_test.go`, `test_*.py`, `*_test.py`, `*.test.ts`, `*.test.js`, `*.spec.ts`, `*.spec.js`, `__tests__/**`, etc. Record the full file list and count.
 
 ### Step 2 — Choose execution strategy
 
-- **1–2 files → Direct mode**: Read the files, evaluate against the Quality Criteria below, then proceed to Pattern Collapsing.
+- **1–2 files → Direct mode**: Read the files, evaluate against the Quality Criteria below, attach a short pattern label to each finding (same scheme as parallel mode — see Parallel Review Mode → Spawn subagents, item 7), then proceed to Pattern Collapsing.
 - **3+ files → Parallel mode**: Batch files, spawn subagents, collect results, merge, then proceed to Pattern Collapsing.
 
 ### Parallel Review Mode

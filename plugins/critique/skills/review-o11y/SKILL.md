@@ -10,18 +10,25 @@ Review a codebase's logging and error messages for consistency, level appropriat
 > [!IMPORTANT]
 > Consult [REFERENCE.md](REFERENCE.md) for the expected output format and level of detail.
 
-## User Input
+## Scope
 
-```text
-$ARGUMENTS
-```
+Determine the review scope before discovering files:
 
-You **MUST** consider the user input before proceeding (if not empty).
+- If `$ARGUMENTS` is non-empty, treat it as a path (file or directory) and run:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh "$ARGUMENTS"
+  ```
+- If `$ARGUMENTS` is empty, scope to files added or modified on the current branch relative to the default branch:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh
+  ```
 
-## Argument Parsing
+Handle the script's exit codes:
+- **0 with output** — use the listed paths as input to the discovery step below.
+- **0 with empty output** — branch has no diff vs the default branch. Tell the user and ask which path to review.
+- **non-zero** — script prints a message to stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay the message and ask the user which path to review.
 
-Parse `$ARGUMENTS` for:
-- **Path**: Required path to review (file or directory)
+The script returns paths language-blind. The discovery step below filters to source files; if the filter excludes everything but the script's output was non-empty, the language may not be in the pattern list — apply judgment to identify source files in the output.
 
 ## Prerequisites
 
@@ -45,7 +52,7 @@ This skill has two modes of judgement. Understanding the split is critical so yo
 
 ### Step 1 — Discover source files
 
-Find all source files in the specified path, excluding test files, generated code, vendored dependencies, and pure configuration. Record the file list and count.
+From the script's output, filter to source files, excluding test files, generated code, vendored dependencies, and pure configuration. Record the file list and count.
 
 ### Step 2 — Detect the dominant conventions
 

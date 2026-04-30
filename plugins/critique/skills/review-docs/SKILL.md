@@ -10,33 +10,40 @@ Review documentation in the specified path (default: entire repository).
 > [!IMPORTANT]
 > Consult [REFERENCE.md](REFERENCE.md) for the expected output format and level of detail.
 
-## User Input
+## Scope
 
-```text
-$ARGUMENTS
-```
+Determine the review scope before discovering files:
 
-You **MUST** consider the user input before proceeding (if not empty).
+- If `$ARGUMENTS` is non-empty, treat it as a path (file or directory) and run:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh "$ARGUMENTS"
+  ```
+- If `$ARGUMENTS` is empty, scope to files added or modified on the current branch relative to the default branch:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh
+  ```
 
-## Argument Parsing
+Handle the script's exit codes:
+- **0 with output** — use the listed paths as input to the discovery step below.
+- **0 with empty output** — branch has no diff vs the default branch. Tell the user and ask which path to review.
+- **non-zero** — script prints a message to stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay the message and ask the user which path to review.
 
-Parse `$ARGUMENTS` for:
-- **Path**: Optional path to review (default: repo root, reviews all docs)
+The script returns paths language-blind. The discovery step below filters to README.md and CLAUDE.md files; this filter is universal across languages so a fallback is rarely needed.
 
 ## Workflow
 
-1. Run deterministic validation script for structural issues
-2. Find all README and CLAUDE.md files in scope
+1. Run deterministic validation script for structural issues (always repo-wide — structural drift outside the branch scope still matters)
+2. Find README and CLAUDE.md files in the script's output
 3. Evaluate against quality criteria
 4. Cross-reference enumerations in docs against codebase sources of truth (see Enumeration Completeness)
 5. Produce the findings report
 
 ### Deterministic Validation
 
-Before manual review, run the validation script for CLAUDE.md structural issues:
+Before manual review, run the validation script for CLAUDE.md structural issues. Pass the repo root so structural problems anywhere in the repo are caught regardless of branch scope:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/review-docs/scripts/validate-claude-md.py $0 --json
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/review-docs/scripts/validate-claude-md.py . --json
 ```
 
 Parse the JSON output and include structural issues (missing tables, missing references, index drift) in your findings. The script checks:

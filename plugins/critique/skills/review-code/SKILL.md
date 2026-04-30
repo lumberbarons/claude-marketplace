@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: Reviews code for design issues that static analysis misses. Checks single responsibility, abstraction levels, testability, and meaningful naming. Use when asked to review code, find design problems, or improve code quality.
+description: Reviews code for design issues that static analysis misses — single responsibility, abstraction levels, testability, meaningful naming, API design, and error-handling strategy. Use when asked to review code, audit a module, check architecture or design, find design problems, improve code quality, or look at testability/coupling/SRP. Also invoke when a user says things like "review this code", "is this well-structured", "audit src/X for design problems", "what's wrong with this module", "check the architecture here", "look for SRP violations", "is this testable", or asks for a design-level (not lint-level) read of a file or directory.
 ---
 
 # Code Review
@@ -12,28 +12,50 @@ Review code for design and architecture issues that linters and static analysis 
 
 ## Prerequisites
 
-This review assumes standard tooling is already running:
+This review focuses on design issues. Standard tooling handles the mechanical checks and is assumed to run alongside (not before) this review:
 - **Linters** (ESLint, golangci-lint, pylint) catch complexity, length, nesting, unused code
 - **Formatters** (prettier, gofmt, black) handle style
 - **Security scanners** (Semgrep, CodeQL, Bandit) catch injection, XSS, secrets
 - **Type checkers** (TypeScript, mypy) catch type errors
 
-If these aren't set up, recommend adding them before this review.
+If any of these aren't set up, mention it in the report so the team can add them — but proceed with the design review regardless. Skip mechanical findings that those tools would catch.
+
+## Scope
+
+Determine the review scope before discovering files:
+
+- If `$ARGUMENTS` is non-empty, treat it as a path (file or directory) and run:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh "$ARGUMENTS"
+  ```
+- If `$ARGUMENTS` is empty, scope to files added or modified on the current branch relative to the default branch:
+  ```bash
+  ${CLAUDE_PLUGIN_ROOT}/scripts/discover-files.sh
+  ```
+
+Handle the script's exit codes:
+- **0 with output** — use the listed paths as input to the discovery step below.
+- **0 with empty output** — branch has no diff vs the default branch. Tell the user and ask which path to review.
+- **non-zero** — script prints a message to stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay the message and ask the user which path to review.
+
+The script returns paths language-blind. The discovery step below filters to source files; if the filter excludes everything but the script's output was non-empty, the language may not be in the pattern list — apply judgment to identify source files in the output.
 
 ## Workflow
 
 ### Step 1 — Discover source files
 
-`$ARGUMENTS` is the path (file or directory) to review. Find all source files there, excluding test files, vendored/generated code, and files that are purely configuration. Record the full file list and count.
+From the script's output, filter to source files, excluding test files, vendored/generated code, and files that are purely configuration. Record the full file list and count.
 
 ### Step 2 — Choose execution strategy
 
-- **1–2 files → Direct mode**: Read the files, evaluate against the Design Criteria below (skip mechanical checks tools handle), then proceed to Pattern Collapsing.
-- **3+ files → Parallel mode**: Batch files, spawn subagents, collect results, merge, then proceed to Pattern Collapsing.
+- **1–4 files → Direct mode**: Read the files, evaluate against the Design Criteria below (skip mechanical checks tools handle), then proceed to Pattern Collapsing.
+- **5+ files → Parallel mode**: Batch files, spawn subagents, collect results, merge, then proceed to Pattern Collapsing.
+
+Adjust by file size when the count is on the boundary: if 5–6 files are small (under ~200 lines each), direct mode is fine; if 3–4 files are large (over ~400 lines each), prefer parallel mode. Use judgment — the goal is to avoid serially reading thousands of lines in one context, not to hit an exact threshold.
 
 ### Parallel Review Mode
 
-Use this mode when 3 or more source files are discovered.
+Use this mode when there are enough files (or files are large enough) that reading them serially would meaningfully slow the review.
 
 #### Batching
 
@@ -41,7 +63,7 @@ Group files into batches based on total file count:
 
 | Total files | Files per batch | ~Subagents |
 |-------------|-----------------|------------|
-| 3–10        | 1               | 3–10       |
+| 5–10        | 1               | 5–10       |
 | 11–20       | 2               | 6–10       |
 | 21+         | 3               | 7–10       |
 
@@ -216,7 +238,7 @@ The reasoning: design changes have wider blast radius than test fixes, so churn 
 
 ## Output
 
-You MUST produce a report following the exact structure shown in [REFERENCE.md](REFERENCE.md). When using parallel mode, the lead assembles the unified report from subagent findings. The report format is identical regardless of execution mode.
+Produce a report following the exact structure shown in [REFERENCE.md](REFERENCE.md). The format is fixed so readers can scan a review the same way every time, and so downstream tooling (raise-beads, dashboards) can parse findings without per-run exceptions. When using parallel mode, the lead assembles the unified report from subagent findings — the report format is identical regardless of execution mode.
 
 Each finding MUST include:
 
