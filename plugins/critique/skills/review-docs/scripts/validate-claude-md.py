@@ -12,6 +12,10 @@ import re
 import json
 from pathlib import Path
 
+# Target from the Claude Code memory docs: longer files consume more context
+# and reduce adherence to the instructions that matter.
+CLAUDE_MD_LINE_TARGET = 200
+
 
 def find_git_root(path: Path) -> Path | None:
     """Find the git repository root for a given path."""
@@ -89,16 +93,6 @@ def extract_navigation_table_refs(content: str, directory: Path) -> tuple[list[s
                     nav_refs.append(ref)
 
     return nav_refs, doc_refs
-
-
-def is_covered_by_indexed_children(name: str, indexed: set[str]) -> bool:
-    """Check if a directory is implicitly covered by indexing its children.
-
-    For example, if indexed contains 'cmd/server/main.go' and 'cmd/api/main.go',
-    then 'cmd' is considered covered.
-    """
-    prefix = f"{name}/"
-    return any(ref.startswith(prefix) for ref in indexed)
 
 
 def extract_imports(content: str, file_path: Path) -> list[dict]:
@@ -282,22 +276,32 @@ def validate_claude_md(file_path: Path, git_root: Path | None) -> dict:
     content = file_path.read_text()
     directory = file_path.parent
 
-    # Check for tabular index
+    # A tabular index is one valid form for a CLAUDE.md, not a required one.
+    # A file of commands, conventions, and gotchas with no table is fine.
     table_pattern = r'\|.*\|.*\|.*\|'
     has_table = bool(re.search(table_pattern, content))
-    if not has_table:
-        issues.append({"type": "missing_table", "severity": "P2", "message": "No markdown table found"})
 
-    # Check table headers - accept common variations
-    header_checks = [
-        # Accept: File, Directory, File/Directory, File / Directory, Path, etc.
-        (r'\|\s*(File|Directory|Path)(\s*/\s*(File|Directory|Path))?\s*\|', "File/Directory"),
-        (r'\|\s*What\s*\|', "What"),
-        (r'\|\s*When to (read|use|run)\s*\|', "When to read/use/run"),
-    ]
-    for pattern, col_name in header_checks:
-        if not re.search(pattern, content, re.IGNORECASE):
-            issues.append({"type": "missing_column", "severity": "P3", "message": f"Missing '{col_name}' column"})
+    # Size: CLAUDE.md loads into context every session, and adherence drops as it grows.
+    line_count = len(content.splitlines())
+    if line_count > CLAUDE_MD_LINE_TARGET:
+        issues.append({
+            "type": "oversized",
+            "severity": "P3",
+            "message": (
+                f"{line_count} lines, over the {CLAUDE_MD_LINE_TARGET}-line target — "
+                "move task-specific procedures to a skill, path-specific conventions to "
+                ".claude/rules/, and reference material to a file read on demand"
+            ),
+        })
+
+    # Where a table exists, a "When to read" column carries the routing information.
+    # Its absence is polish, not a defect.
+    if has_table and not re.search(r'\|\s*When to (read|use|run)\s*\|', content, re.IGNORECASE):
+        issues.append({
+            "type": "missing_column",
+            "severity": "P4",
+            "message": "Index table has no 'When to read/use/run' column",
+        })
 
     # Extract referenced files/directories from tables
     nav_refs, doc_refs = extract_navigation_table_refs(content, directory)
@@ -313,43 +317,10 @@ def validate_claude_md(file_path: Path, git_root: Path | None) -> dict:
                 "message": f"Referenced path does not exist: {ref}"
             })
 
-    # Check for files in directory not in index (index drift)
-    if has_table:
-        # Normalize refs for comparison (use nav_refs for drift detection)
-        indexed = {r.rstrip('/') for r in nav_refs}
-
-        # Always skip these regardless of gitignore
-        always_skip = {'CLAUDE.md', 'CLAUDE.local.md', 'MEMORY.md'}
-
-        # Lock files: committed to git but never useful for Claude to document
-        lock_files = {
-            'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
-            'uv.lock', 'poetry.lock', 'Pipfile.lock',
-            'Cargo.lock', 'Gemfile.lock', 'composer.lock',
-            'go.sum', 'mix.lock', 'pubspec.lock', 'pom.xml.lock',
-        }
-
-        for item in directory.iterdir():
-            name = item.name
-            if name in always_skip or name in lock_files:
-                continue
-            # Skip dotfiles (config files, .git, etc.) - rarely documented in CLAUDE.md
-            if name.startswith('.'):
-                continue
-            # Use git to check if file is ignored
-            if is_gitignored(item, git_root):
-                continue
-            # Check direct indexing
-            if name in indexed or f"{name}/" in indexed:
-                continue
-            # Check if covered by indexed children (e.g., cmd/server/main.go covers cmd)
-            if is_covered_by_indexed_children(name, indexed):
-                continue
-            issues.append({
-                "type": "index_drift",
-                "severity": "P3",
-                "message": f"Not indexed: {name}"
-            })
+    # No check for "files present but not indexed". An index is a curated set of
+    # pointers, not a directory listing; omission is usually the right editorial
+    # choice, and flagging it drives CLAUDE.md toward the file-by-file descriptions
+    # that waste context on every load.
 
     # Validate @path imports
     issues.extend(validate_imports(file_path, content))
