@@ -55,6 +55,28 @@ Parse the JSON output and include structural issues (broken references, oversize
 
 ## Quality Criteria
 
+### Enumeration Completeness
+
+The highest-value check in this review, and the one a reader cannot perform by eye: when documentation lists things — components, features, agents, services, environment variables, log files, database tables, API endpoints, CLI commands — verify the list against the codebase rather than reading it for plausibility. A list that was right when written is the most common way documentation goes quietly wrong.
+
+**Workflow**:
+1. Identify every enumeration in the docs (any list presenting itself as "all" or "the" items of a type)
+2. Locate the canonical source in code
+3. Diff both directions: in code but missing from docs, and in docs but gone from code
+4. Flag gaps as P3, **naming the source** you diffed against so the reader can re-verify
+
+**Locating the canonical source** — Prefer a machine-readable source over prose, and prefer one that fails loudly when it drifts. In descending order: a directory listing or glob (agents, plugins, migrations); a declarative manifest (`.env.example`, `package.json` scripts, a route table, a schema file); a code construct that enumerates (a registry map, an enum, a switch); grep across call sites. If the only available source is other prose, say so in the finding — a docs-vs-docs diff proves consistency, not accuracy.
+
+**Common pairings**:
+- Agent/service/component lists → config files or directory listings
+- Feature/capability lists → tool, handler, or route files
+- Environment variables → `.env.example`, `.env.template`, or equivalent
+- Log file lists → logging configuration entries
+- Database tables/schema → schema definitions or migrations
+- CLI commands / Makefile targets → the actual command definitions
+
+**What to skip**: Exhaustive enumeration is not always expected. A "Key features" section need not list every minor capability. But a section titled "Agents" or "Configuration" that presents itself as comprehensive should be complete.
+
 ### Structure (Progressive Disclosure)
 
 README.md files belong at **component boundaries** — the repo root plus the top-level directory of each major component (e.g., `frontend/`, `backend/`, `infra/`, `docs/`). Most subdirectories within a component should not have their own README. If a directory only needs a note about how to work in it, a CLAUDE.md is sufficient.
@@ -79,31 +101,11 @@ Do **not** flag missing READMEs in nested subdirectories (e.g., `src/utils/`, `l
 - **Concise**: No unnecessary words or redundancy
 - **Clear**: Jargon explained, unambiguous
 - **Accurate**: Examples work, paths exist, commands valid, lists reflect what actually exists in code
-- **Complete**: Prerequisites listed, all steps included, enumerations cover all items (see Enumeration Completeness below)
+- **Complete**: Prerequisites listed, all steps included, enumerations cover all items (see Enumeration Completeness above)
 - **Consistent**: Uniform terminology and formatting
 - **Internally consistent**: Numbers, counts, and facts agree across all mentions within the same document
 
 Content Quality applies primarily to README prose. For CLAUDE.md, focus instead on context cost — see CLAUDE.md Content Value and CLAUDE.md Size below — plus accuracy (references point to real files).
-
-### Enumeration Completeness
-
-When documentation contains a list of things — components, features, agents, services, environment variables, log files, database tables, API endpoints — verify the list is **complete and accurate** by cross-referencing the codebase.
-
-**Workflow**:
-1. Identify every enumeration in the docs (any list that claims to describe "all" or "the" items of a type)
-2. Find the canonical source in code (e.g., config directory for agents, env template for env vars, schema definitions for DB tables)
-3. Diff the two: items in code but missing from docs, items in docs but removed from code
-4. Flag gaps as P3 (stale or incomplete)
-
-**Common patterns to cross-reference**:
-- Agent/service/component lists → config files or directory listings
-- Feature/capability lists → tool, handler, or route files
-- Environment variable documentation → `.env.example`, `.env.template`, or equivalent
-- Log file lists → logging configuration entries
-- Database table/schema documentation → schema definition files or migrations
-- CLI command/Makefile target documentation → actual command definitions
-
-**What to skip**: Exhaustive enumeration is not always expected. Use judgement — a "Key features" section need not list every minor capability. But a section titled "Agents" or "Configuration" that presents itself as comprehensive should be complete.
 
 ### Hidden Knowledge
 
@@ -168,11 +170,15 @@ Apply this test to every line: **would removing it cause a mistake?** If not, it
 | Environment quirks (required env vars, service dependencies) | Long explanations, tutorials, or API reference material |
 | Repository etiquette (branch naming, PR conventions) | Anything that changes whenever a file is added or renamed |
 
-**Derivable content (P3)** — Flag rows and prose that restate what a filename, extension, or one-line read already conveys. A `README.md` row described as "Project overview", a `tests/` row described as "Test files", a `src/api/` row described as "API code": each costs context on every load and prevents nothing.
+**Derivable content (P3)** — Flag rows and prose restating what a filename or one-line read already conveys: a `README.md` row described as "Project overview", a `tests/` row as "Test files". An entry earns its place only when it resolves something a reader would otherwise get wrong — which of two similar directories is canonical, that a name is misleading, that a path is legacy.
 
-Naming a file is not the same as describing it. An entry earns its place when it resolves something a reader would otherwise get wrong — which of two similar directories is canonical, that a name is misleading, that a path is legacy. Enumeration for its own sake does not.
+**Coverage** — A directory needs a CLAUDE.md when something about it would be got wrong without one. Do not flag a directory for lacking one. Never review generated dirs, vendored deps, stubs (`.gitkeep` only), `.git`, `node_modules`, `__pycache__`, `dist`, `build`, and similar; skip `CLAUDE.local.md` and `MEMORY.md` as personal or auto-managed.
 
-**Coverage** — A directory needs a CLAUDE.md when something about it would be got wrong without one. Do not flag a directory for lacking a CLAUDE.md; an absent file is not a defect, an empty-calorie file is. Never review generated dirs, vendored deps, stubs (`.gitkeep` only), `.git`, `node_modules`, `__pycache__`, `dist`, `build`, and similar. Also skip `CLAUDE.local.md` and `MEMORY.md` — these are personal/auto-managed and not part of shared project documentation.
+**Tables are optional** — A tabular index (`File`/`Directory`, `What`, `When to read`) is one valid form, not a required one; a file of commands and gotchas with no table is the shape most directories need. Do not flag a missing table. Do not flag files that exist but are absent from an existing index — an index is a curated set of pointers, not a directory listing, and omission is usually the right editorial choice. Where a table is present, entries use backticked names, "What" text that adds information beyond the name, and action-verb "When to read" triggers ("Adding a new route").
+
+**Root operational sections** — The root CLAUDE.md may also carry Build/Test/Lint commands, agent workflow instructions, and project-wide guidance. Expected; do not flag.
+
+> CLAUDE.md conventions inspired by solatis/claude-config (MIT).
 
 ### CLAUDE.md Size
 
@@ -181,76 +187,24 @@ Target **under 200 lines** per CLAUDE.md. Longer files consume more context and 
 - Over 200 lines — P3. Recommend a specific cut, not "shorten it": task-specific procedures move to a skill, path-specific conventions move to `.claude/rules/` with a `paths:` glob, reference material moves to a file read on demand.
 - `@path` imports do **not** reduce context — imported files are expanded and loaded at launch. Splitting an oversized CLAUDE.md into imports is organisation, not a size fix; flag it as such if used that way (P4).
 
-### CLAUDE.md Navigation Index
-
-A tabular index (`File` or `Directory`, `What`, `When to read`) is **one valid form** for a CLAUDE.md, not a required one. It earns its place where a directory's structure is genuinely non-obvious and the "When to read" triggers carry routing information a reader could not guess.
-
-Do **not** flag a CLAUDE.md for lacking a table. A file of commands, conventions, and gotchas with no table at all is a good CLAUDE.md, and is the shape most directories need.
-
-> CLAUDE.md conventions inspired by solatis/claude-config (MIT).
-
-Where a table is present, entries should use:
-- Backtick-wrapped file/directory names (e.g., `` `src/` ``)
-- Noun-based "What" descriptions that add information beyond the name
-- Action-verb "When to read" triggers (e.g., "Adding a new route", "Debugging test failures")
-
-**Index completeness is not a goal** — An index is a curated set of pointers, not a directory listing. Do not flag files that exist in the directory but are absent from the index; omission is usually the correct editorial choice. Flag the reverse: an index entry pointing at a file or directory that does not exist.
-
-**Content separation** — Subdirectory CLAUDE.md files should carry that area's commands, conventions, and invariants. Extended architecture narrative, design rationale, and history belong in README.md. Flag multi-paragraph architectural prose (P3); do not flag a few lines stating where things live and what rule applies.
-
-**Root CLAUDE.md operational sections** — The root CLAUDE.md may additionally contain operational sections (Build, Test, Lint commands), agent instruction sections (e.g., beads workflow, tool configuration), and other project-wide guidance. This is expected and should not be flagged.
-
-### Docs Written Under Earlier Guidance
-
-Earlier versions of this skill required a tabular index in every CLAUDE.md and treated any unindexed file as drift. Repositories that followed it — including ones this skill previously reviewed — will have exhaustive `File | What | When to read` tables whose rows largely restate filenames. That is now the anti-pattern, but it was the documented convention when those files were written.
-
-Handle it as a migration, not a pile of defects:
-
-- **Report it once.** When a CLAUDE.md's index is systematically derivable, emit **one** P3 finding for the file naming the pattern and the rows worth keeping. Do not emit a finding per row. Do not emit a finding per file when a whole repo shares the pattern — one finding per CLAUDE.md is the ceiling, and a repo-wide note in the summary is better still.
-- **Say why it changed.** The fix text should note that the convention changed, so a maintainer doesn't read it as sloppiness. These files were correct when written.
-- **Keep what survives.** Rows that disambiguate rather than enumerate should be preserved in the fix, not swept away with the rest. Name them explicitly.
-- **Don't recommend deleting the file** merely because its table is derivable. The fix is to cut the table down to what earns its place, or replace it with the commands and gotchas that directory actually needs.
-
-A review that turns a previously-conformant repository into thirty findings is a worse outcome than one that says "this index predates the current convention, here's the trimmed version."
-
 ### CLAUDE.md Progressive Disclosure
 
-**Detail belongs where the code lives.** CLAUDE.md depth should match directory depth. The goal is to minimize context loading at each level — an AI working in `internal/cloud/aws/` should not need to read the entire root CLAUDE.md to understand that directory.
+**Detail belongs where the code lives.** CLAUDE.md depth should match directory depth — an agent working in `internal/cloud/aws/` should not need the root CLAUDE.md to understand that directory. The root carries repo-wide commands and conventions; a branch directory carries the conventions and invariants governing its area; a leaf carries implementation specifics. At every level the content is what a reader can't derive, not a description of what the level contains.
 
-The hierarchy works as follows:
-- **Root CLAUDE.md**: repo-wide commands and conventions. Just enough to work anywhere in the tree.
-- **Branch CLAUDE.md** (e.g., `internal/cloud/`): the conventions and invariants that govern that area.
-- **Leaf CLAUDE.md** (e.g., `internal/cloud/aws/`): implementation specifics that would otherwise be got wrong.
-
-At every level the content is what a reader can't derive — not a description of what the level contains.
-
-**Anti-pattern**: A root CLAUDE.md that contains multi-paragraph explanations of how `internal/cloud/` works, what patterns `internal/broker/` uses, or how `test/` is structured. That detail should live in the respective subdirectory CLAUDE.md files, not the root.
-
-**What root CLAUDE.md should contain**:
-- Project overview (1-2 sentences)
-- Build/test/lint commands
-- Repository-wide conventions that differ from defaults
-- Agent workflow instructions (if applicable)
-- Common gotchas (brief, not exhaustive)
-- Orientation to major areas — only where the layout isn't already obvious from the tree
-
-**What root CLAUDE.md should NOT contain**:
-- Multi-paragraph architecture explanations for subdirectories
-- Implementation patterns specific to a component
-- Detailed testing approaches (belongs in `test/CLAUDE.md`)
-- Provider-specific details (belongs in provider directories)
-- An exhaustive listing of the repository's files and directories
-
-**Broken references** — Flag when:
-- An index entry references a file or directory that does not exist (P2)
-- A CLAUDE.md index links to a README that doesn't exist (P2)
-
-Do not flag a file that exists but is absent from the index, and do not flag a README that references a component with no CLAUDE.md — neither is a defect. See *Index completeness is not a goal* above.
-
-**Misplaced detail** — Flag when:
+**Misplaced detail (P3)** — Flag when:
 - Root CLAUDE.md contains multi-paragraph explanations about subdirectory internals
 - Architectural detail about a component appears in the root instead of that component's CLAUDE.md
 - A branch directory lacks a CLAUDE.md but its detail is front-loaded in a parent CLAUDE.md
+
+Extended architecture narrative, design rationale, and history belong in README.md rather than CLAUDE.md at any level. Do not flag a few lines stating where things live and what rule applies.
+
+**Broken references (P2)** — An index entry or link pointing at a file, directory, or README that does not exist. Do not flag a README that references a component with no CLAUDE.md — that is not a defect.
+
+### Docs Written Under Earlier Guidance
+
+Earlier versions of this skill required an index table in every CLAUDE.md and treated any unindexed file as drift. Repositories that followed it will have exhaustive tables whose rows restate filenames. Those files were correct when written; treat this as a migration, not a pile of defects.
+
+Emit **one** P3 finding per CLAUDE.md naming the pattern — never one per row, and never a separate finding per file when the whole repo shares it (prefer a single repo-wide note in the summary). The fix text must say the convention changed, name the rows worth keeping because they disambiguate rather than enumerate, and cut the table down rather than delete the file.
 
 ### CLAUDE.md Imports (`@path` Syntax)
 
@@ -309,17 +263,13 @@ Applies to CLAUDE.md and `.claude/rules/` instruction content only. Does not app
 - [ ] Root README links to component docs
 - [ ] Each major component root has a README (not nested subdirs)
 - [ ] Progressive disclosure maintained
-- [ ] Subdirectory CLAUDE.md files carry commands and rules, not architecture narrative
-- [ ] Root CLAUDE.md contains commands + conventions, not subdirectory architecture details
 - [ ] Detail lives where the code lives (no front-loading in parent CLAUDE.md files)
+- [ ] Architecture narrative in README, not CLAUDE.md at any level
 
 ### CLAUDE.md Content
-- [ ] Every line would cause a mistake if removed
-- [ ] Nothing derivable from filenames, code, or standard conventions
-- [ ] No file-by-file descriptions or exhaustive directory layouts
-- [ ] Each CLAUDE.md under 200 lines
+- [ ] Every line would cause a mistake if removed — nothing derivable from filenames, code, or standard conventions
+- [ ] Each CLAUDE.md under 200 lines, with imports not used to work around length
 - [ ] Index entries, where present, resolve to existing files
-- [ ] Imports not used to work around length
 - [ ] Indexes predating the current convention reported as one migration finding, not per row
 
 ### Content Quality
@@ -332,6 +282,7 @@ Applies to CLAUDE.md and `.claude/rules/` instruction content only. Does not app
 
 ### Codebase Consistency
 - [ ] Enumerations (agents, features, env vars, etc.) cross-referenced against code
+- [ ] Canonical source named in each enumeration finding
 - [ ] No undocumented components in sections that present themselves as comprehensive
 - [ ] No documented items that no longer exist in code
 
@@ -366,7 +317,7 @@ You MUST produce a report following the exact structure shown in [REFERENCE.md](
 **Severity guide**:
 - **P1** — Security-relevant: docs omit auth steps, expose secrets in examples, or give dangerous command examples
 - **P2** — Broken: code examples that error, paths/commands that don't exist, quick start fails on copy-paste, index entries pointing to missing files, broken `@path` imports, circular imports, invalid glob syntax in rules frontmatter
-- **P3** — Stale, incomplete, or context-wasting: outdated references, missing prerequisites, missing env var docs, no expected output shown, misplaced detail (architecture in root instead of subdirectory CLAUDE.md), enumeration gaps (components/features/env vars in code but missing from docs), internal fact contradictions within the same document, leaked local preferences in shared CLAUDE.md, orphan globs in rules frontmatter, duplication between rules files and CLAUDE.md, import chains exceeding 4 hops, **derivable CLAUDE.md content** (file-by-file descriptions, directory layouts, restated conventions), **CLAUDE.md over 200 lines**
+- **P3** — Stale, incomplete, or context-wasting: outdated references, missing prerequisites, missing env var docs, no expected output shown, misplaced detail (architecture in root instead of subdirectory CLAUDE.md), enumeration gaps in either direction (in code but missing from docs, or documented but removed from code), internal fact contradictions within the same document, leaked local preferences in shared CLAUDE.md, orphan globs in rules frontmatter, duplication between rules files and CLAUDE.md, import chains exceeding 4 hops, **derivable CLAUDE.md content** (file-by-file descriptions, directory layouts, restated conventions), **CLAUDE.md over 200 lines**
 - **P4** — Polish: formatting inconsistencies, verbose wording, missing "When to read" triggers, missing platform-specific notes, vague instructions ("follow best practices"), generic rule filenames, ungrouped instruction lists, unnecessarily scoped universal rules, imports used to work around CLAUDE.md length
 
 Each finding MUST include:
