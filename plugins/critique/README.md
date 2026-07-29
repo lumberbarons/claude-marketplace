@@ -8,7 +8,7 @@ Four focused review skills, each operating on a path you specify:
 
 - **review-code** — design issues (single responsibility, abstraction levels, testability, meaningful naming, API design, error handling strategy)
 - **review-tests** — test completeness, usefulness, coverage gaps, output validation, isolation, readability
-- **review-docs** — README and CLAUDE.md quality, progressive disclosure, enumeration completeness, context cost (derivable content, file size), broken references, `.claude/rules/` validation
+- **review-docs** — README and CLAUDE.md accuracy, drift against the codebase, and context cost. Deliberately short: it states severity discipline and local policy, and leaves the review itself to the model's judgement (see `skills/review-docs/evals/` for the benchmark that settled this)
 - **review-o11y** — observability: logging consistency, log level appropriateness, log value, missing logs at I/O boundaries, and error-message quality and consistency
 
 Each skill produces a structured findings report with P1/P2/P3 (and P4 for docs) severities, specific file:line locations, explanations, and concrete fixes.

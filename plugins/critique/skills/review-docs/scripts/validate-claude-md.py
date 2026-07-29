@@ -338,10 +338,17 @@ def validate_claude_md(file_path: Path, git_root: Path | None) -> dict:
 
 
 def is_in_build_directory(file_path: Path) -> bool:
-    """Check if a file is inside a build/artifact directory."""
-    build_dirs = {'build', 'dist', 'out', 'target', '.next', '__pycache__', 'node_modules'}
+    """Check if a file is inside a build/artifact or test-fixture directory.
+
+    Fixture directories hold deliberately-broken documents used as test input.
+    Validating them reports defects that are the whole point of the fixture.
+    """
+    skip_dirs = {
+        'build', 'dist', 'out', 'target', '.next', '__pycache__', 'node_modules',
+        'fixtures', '__fixtures__', 'testdata',
+    }
     for parent in file_path.parents:
-        if parent.name in build_dirs:
+        if parent.name in skip_dirs:
             return True
     return False
 
