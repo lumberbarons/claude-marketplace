@@ -7,49 +7,98 @@ This reference shows the expected format and level of detail for a code review r
 ## Example Report
 
 ```
----
 Code Review for src/order
 
-4 files reviewed, 4 issues found (1 P1, 2 P2, 1 P3).
+4 files reviewed, 3 issues found (1 P1, 1 P2, 1 P3).
 
-### 1. [P2] OrderService has three unrelated reasons to change
-**Location:** src/order/service.go:87
+### 1. [P1] Refund authorization is decided from a client-supplied header
+**Location:** src/order/auth.go:15
 
-PlaceOrder validates input, calculates pricing with discount rules, and writes to the database in one 90-line function. A pricing policy change forces edits to the same function as a validation rule change. Extract validateOrder, priceOrder, and saveOrder so each has a single reason to change.
+`RequireAdmin` reads `X-Admin` off the inbound request, and `POST /order/refund` is
+gated on it. Any customer can set that header themselves, so the one endpoint that
+moves money back out is unprotected. Every future check built on `RequireAdmin`
+inherits the bypass.
 
-### 2. [P2] HTTP handler embeds discount business logic
+**Fix:** Derive the role from a verified credential — a signed session token or a
+server-side session lookup — returning `(Role, error)` so an authentication failure is
+distinguishable from an authenticated non-admin. Read the role from request context
+populated by authentication middleware, never from a header.
+
+**Done when:** No function derives a role or permission from `r.Header.Get`, and a
+request carrying only `X-Admin: true` receives 403 from `POST /order/refund`.
+
+### 2. [P2] Discount rules are inlined in the HTTP handler
 **Location:** src/order/handler.go:23
 
-The handler parses the HTTP request, then inline-calculates volume discounts before calling the service. Discount rules belong in the domain layer so they can be tested without an HTTP context and reused from other entry points (CLI, queue consumer).
+`handleCheckout` parses the request and then computes volume discounts inline, even
+though `pricing.go` already owns that ladder. Adding a second entry point — the queue
+consumer planned for bulk imports, or a CLI — means re-implementing the tiers, and the
+two copies drift silently: the quote endpoint and the checkout endpoint would show
+different totals with no error anywhere.
 
-### 3. [P1] Repository directly instantiates database connection
-**Location:** src/order/repo.go:14
+**Fix:** Call `pricing.LineTotalCents(unitCents, qty)` from the handler and delete the
+inline tier ladder at handler.go:23-31.
 
-NewOrderRepo calls sql.Open internally, making it impossible to test with a fake database or swap drivers. Accept a *sql.DB (or an interface) as a parameter so callers control the connection lifecycle.
+**Done when:** `handler.go` contains no discount arithmetic, and both the checkout and
+quote paths reach their totals through `pricing.go`.
 
-### 4. [P3] Handler name doesn't reveal intent
+### 3. [P3] `processOrder` does not distinguish itself from its sibling handlers
 **Location:** src/order/handler.go:61
 
-`processOrder` is indistinguishable from `handleOrder` or `doOrder`. Since this handler specifically processes checkout submissions, rename to `handleCheckout` to convey the specific action.
----
+`Routes` registers `processOrder`, `refund` and `quote`. Two name the operation; the
+first names nothing, so the doc comment has to supply what the name omits. A maintainer
+scanning `Routes` for the order-placement endpoint has to read the body to be sure.
+
+**Fix:** Rename to `handleCheckout`, matching the operation it serves, and update the
+registration in `Routes`.
+
+**Done when:** `processOrder` no longer appears in `handler.go` and `POST /checkout`
+dispatches to `h.handleCheckout`.
 ```
 
 ---
 
 ## Format Rules
 
-### Findings use H3 headers with priority tag, Location, and explanation
+### Start with a count line
+
+`N files reviewed, M issues found (severity breakdown).` The header count reflects the
+*reported* findings.
+
+### Findings use H3 headers with a priority tag, then Location, Fix, and Done when
 
 ```
-### 1. [P2] OrderService has three unrelated reasons to change
+### 1. [P2] Short statement of the design problem
 **Location:** src/order/service.go:87
 
-Explanation of the design problem and rationale for the fix.
+Explanation naming the change this design would break.
+
+**Fix:** Concrete prescription — for API issues, the exact signature.
+
+**Done when:** A criterion checkable by reading the diff.
 ```
 
 ### Only show issues found — no passing rows
 
-Do not include items that passed review. Start with "N files reviewed, M issues found (severity breakdown)."
+Do not list items that passed review. The one exception is the verdict below: on code
+that holds up, a sentence or two saying so is not a passing row, it is the finding-free
+result stated plainly.
+
+### When the code is sound
+
+A near-empty report still needs a verdict, or the reader cannot tell a careful review
+from a cursory one:
+
+```
+Code Review for pricing/
+
+4 files reviewed, 0 issues found.
+
+The design holds up. Rates are injected through a protocol rather than fetched, so the
+conversion logic is testable without a network; each module has one job; and the error
+hierarchy gives callers a single type to branch on with the offending value attached.
+Nothing here rises to a finding.
+```
 
 ### No tables
 
@@ -57,10 +106,11 @@ Do not include summary tables or issue tables. Findings are the only output.
 
 ### Truncation footer when the cap kicks in
 
-When findings exceed the reporting cap (see SKILL.md → Reporting Cap), end the report with a single-line footer:
+When findings exceed the reporting cap (see SKILL.md), end with a single-line footer:
 
 ```
 Note: 7 additional findings omitted (4 P2, 3 P3) — re-run after addressing these to surface what remains.
 ```
 
-The footer is omitted when all findings fit under the cap. The header count reflects the *reported* findings; the footer count reflects the *omitted* tail.
+The footer is omitted when all findings fit under the cap. The footer count reflects the
+*omitted* tail.
