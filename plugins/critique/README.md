@@ -13,6 +13,8 @@ Four focused review skills, each operating on a path you specify:
 
 Each skill produces a structured findings report with P1/P2/P3 (and P4 for docs) severities, specific file:line locations, explanations, and concrete fixes.
 
+Every skill also takes two flags for use outside an interactive session: `--json <path>` writes a machine-readable findings file alongside the report ([FINDINGS.md](FINDINGS.md)), and `--non-interactive` removes every prompt, reporting `no_scope` or `error` instead of asking which path to review. Together they make a review safe to run unattended — including the part that matters most, distinguishing "reviewed and found nothing" from "never ran".
+
 ## Installation
 
 Install via the lumber-mart marketplace — see the [root README](../../README.md#usage) for the `/plugin marketplace add` and `/plugin install` commands.
@@ -41,6 +43,16 @@ Install via the lumber-mart marketplace — see the [root README](../../README.m
 /critique:review-docs
 /critique:review-docs backend/
 /critique:review-o11y internal/payments/
+
+/critique:review-o11y --json out/o11y.json internal/payments/
+/critique:review-tests --json out/tests.json --non-interactive
+```
+
+Findings files feed [`/hew:raise-issues`](../hew/README.md), which turns them into deduplicated GitHub issues:
+
+```
+/critique:review-o11y --json out/o11y.json internal/http
+/hew:raise-issues --findings out/o11y.json
 ```
 
 ## Output

@@ -42,7 +42,8 @@ The key is the identity of a *finding*, not of a line of code, which is what mak
 the two things that change constantly — line numbers and the model's phrasing of a title.
 
 - `skill` — which review produced it (`o11y`, `tests`, `docs`, `code`)
-- `pattern` — a slug from the closed vocabulary in `skills/raise-issues/REFERENCE.md`
+- `pattern` — the root-cause slug the review emitted, from the vocabulary each critique skill
+  owns in its own `REFERENCE.md`, passed through unchanged
 - `scope` — the deepest directory containing every affected file, derived mechanically from the
   file list rather than chosen, so two runs cannot anchor the same finding differently
 

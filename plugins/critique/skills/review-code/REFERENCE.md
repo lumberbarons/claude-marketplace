@@ -114,3 +114,24 @@ Note: 7 additional findings omitted (4 P2, 3 P3) — re-run after addressing the
 
 The footer is omitted when all findings fit under the cap. The footer count reflects the
 *omitted* tail.
+
+---
+
+## Pattern slugs
+
+The `pattern` field of a findings file (see [FINDINGS.md](../../FINDINGS.md)) names a finding's
+root cause. Consumers use it as part of a finding's identity across runs, so it has to be stable
+between them — a slug that drifts from one phrasing to another reads as a new finding and gets
+filed twice. Pick from this list; use `other-<slug>` when nothing fits, and treat a recurring
+`other-` slug as a sign this list needs extending.
+
+```
+api-design
+dead-code
+duplicated-logic
+error-handling-strategy
+leaky-abstraction
+single-responsibility
+unclear-naming
+untestable-seam
+```
