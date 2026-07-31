@@ -13,22 +13,10 @@ Learn more about Claude Code marketplaces in the [official documentation](https:
 
 | Plugin | Category | Description |
 |--------|----------|-------------|
-| [circuits](plugins/circuits/) | Hardware | Skills and agents for microcontroller and hardware projects -- timing diagrams, PCB design, and datasheet extraction |
 | [specbeads](plugins/specbeads/) | Workflow | Specification-driven development with spec-kit and beads -- task tracking and spec conformance |
 | [runbooks](plugins/runbooks/) | Workflow | Operational runbook creation with consistent structure and built-in maintenance feedback loops |
 | [critique](plugins/critique/) | Workflow | Review skills for code, tests, documentation, and observability -- design, coverage, doc-structure, and logging issues that linters miss |
 | [decisions](plugins/decisions/) | Workflow | Architectural Decision Record (ADR) authoring in MADR format with relationship tracking and CLAUDE.md registration |
-
-### [circuits](plugins/circuits/)
-
-Skills and agents to help with microcontroller and other hardware projects.
-
-| Component | Type | Description |
-|-----------|------|-------------|
-| `circuits:wavejson` | Skill | Generate WaveJSON timing diagrams and HTML viewers using WaveDrom |
-| `circuits:circuit-synth` | Skill | Design PCB circuits in Python with KiCad output and component search |
-| `circuits:datasheet` | Skill | Extract structured information from IC/component datasheets into markdown |
-| `circuits:datasheet-agent` | Agent | Autonomous agent for datasheet reading and extraction |
 
 ### [specbeads](plugins/specbeads/)
 
@@ -90,7 +78,7 @@ Architectural Decision Record (ADR) authoring, maintenance, and enforcement. Pro
 /plugin list
 
 # Install a plugin
-/plugin install circuits@lumber-mart
+/plugin install critique@lumber-mart
 ```
 
 ## License

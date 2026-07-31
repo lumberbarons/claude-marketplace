@@ -1,8 +1,0 @@
-{
-  "name": "circuits",
-  "description": "Skills and agents to help with microcontroller and other hardware projects.",
-  "version": "1.0.0",
-  "author": {
-    "name": "lumberbarons"
-  }
-}
