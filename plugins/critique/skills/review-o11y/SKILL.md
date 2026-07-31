@@ -5,10 +5,14 @@ description: Reviews observability — logging consistency, log level appropriat
 
 # Observability Review
 
-Review a codebase's logging and error messages for consistency, level appropriateness, value, and coverage at I/O boundaries. Language-agnostic. This skill does **not** judge error-handling strategy (where to catch, whether to retry, whether to degrade) — that belongs to `review-code`. This skill judges the *artifacts*: the log statements that get emitted and the error messages that get constructed.
+Review the logging and error messages in scope.
 
 > [!IMPORTANT]
 > Consult [REFERENCE.md](REFERENCE.md) for the expected output format and level of detail.
+
+You already know what bad observability looks like — a bearer token in a request log, ERROR firing on a user's typo, `"something went wrong"` as the only clue an operator gets, a retry that hides a flaking dependency, a wrap that throws away the cause. Apply that judgement directly and thoroughly; reading the log and error sites closely is the bulk of the value here.
+
+What follows is only the local policy you could not infer. Prescribing the review itself bought nothing measurable: a 249-line version of this skill found the same defects as this one across four fixtures while spending 23% more tokens, and because it set no ceiling on report length it filed up to fifteen findings in a single report.
 
 ## Scope
 
@@ -24,226 +28,63 @@ Determine the review scope before discovering files:
   ```
 
 Handle the script's exit codes:
-- **0 with output** — use the listed paths as input to the discovery step below.
+- **0 with output** — use the listed paths.
 - **0 with empty output** — branch has no diff vs the default branch. Tell the user and ask which path to review.
 - **non-zero** — script prints a message to stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay the message and ask the user which path to review.
 
-The script returns paths language-blind. The discovery step below filters to source files; if the filter excludes everything but the script's output was non-empty, the language may not be in the pattern list — apply judgment to identify source files in the output.
+The script returns paths language-blind. Filter to source files, excluding tests, generated code, and vendored dependencies.
 
-## Prerequisites
+For three or more source files, fan out: give each subagent a couple of files, the severity rules below, the detected conventions from the next section, and tell it not to use Bash — this is static reading, so shell access only adds latency and risk. Merge what comes back before collapsing patterns.
 
-This review assumes standard tooling is already running:
-- **Linters** catch empty `catch` blocks, unused imports, obviously broken format strings
-- **Security scanners** catch hardcoded secrets and a few well-known PII patterns
+## Judge semantics prescriptively, syntax descriptively
 
-This skill focuses on observability design issues those tools cannot detect: whether logs are useful, whether levels carry meaning, whether context is preserved, whether error messages are consistent and actionable, and whether the codebase logs at the places that matter operationally.
+This is the split that keeps the review honest, in both directions.
 
-## Philosophy — prescriptive vs descriptive
+**Semantics are prescriptive.** Whether a token reaches a log, whether ERROR means "act on this", whether a retry is visible, whether a wrap keeps the cause — these follow from how oncall actually works, so flag them even when the codebase is consistently wrong. Consistency is not a defence.
 
-This skill has two modes of judgement. Understanding the split is critical so you don't flag style choices as bugs or give bad logging a clean pass because it is "consistent".
+**Syntax is descriptive.** Logger library, field-name casing, whether the correlation id is `request_id` or `traceId`, error-message capitalization and verb form — reasonable shops differ, and a shop's consistent choice is its right. Detect the dominant convention first, then flag drift *against that baseline*, never against your own taste.
 
-**Prescriptive** — the skill has a fixed opinion regardless of what the codebase currently does. These rules exist because they reflect a broad operational consensus: break them and real oncall pain follows. Flag violations even if the whole codebase is consistently wrong.
+So before flagging anything on the syntactic axis, sample the codebase and work out what normal looks like here: logger library, call shape (structured vs string-formatted), field casing, correlation field names, error-message format and construction pattern. Open the report with the **Detected conventions** block REFERENCE.md shows, so a reader can catch you anchoring wrong.
 
-**Descriptive** — the skill detects the codebase's dominant convention and flags outliers. These cover style choices where reasonable shops legitimately differ (logger library, field-name casing, error-message punctuation). A shop's consistent choice is its right; the skill's job is to notice drift, not to impose taste.
+When one pattern clearly dominates, minority sites are outliers. When the codebase is genuinely split down the middle, no side is an outlier — raise one finding that the codebase runs two conventions and asks readers to know both, and let the maintainers pick.
 
-**Rule of thumb: semantics are prescriptive, syntax is descriptive.** Whether logs carry correlation context is a semantic question — always enforced. Whether the correlation id is called `request_id`, `requestId`, or `trace_id` is a syntactic question — detect the dominant choice and flag outliers.
+## Severity, anchored on operational consequence
 
-## Workflow
+These findings feed a work-tracking pipeline, so an inflated severity becomes false urgency in someone's backlog and teaches people to ignore the reviewer. The driving question: **what does an operator lose at 3am because of this?**
 
-### Step 1 — Discover source files
+- **P1** — a secret, token, credential, or PII reaches a log or an error message, at any level (DEBUG included: log levels are configuration, and the payload is already written). Also: a failure swallowed with neither a log nor a propagation, so it is invisible everywhere.
+- **P2** — real operational blindness or real alert damage. ERROR on expected user-input rejections, which pages someone for a typo; an operationally critical failure logged below the alerting threshold; missing logs at an I/O boundary (outbound call, inbound handler, silent retry, silent fallback); a wrap that drops the cause chain so `errors.Is` / `except X from e` / `err.cause` stops working; codebase-wide unstructured logging, which no aggregator can filter on; no correlation id at inbound handlers, so a single request cannot be stitched together.
+- **P3** — field-name drift, format inconsistency, entry/exit noise, an unactionable message on a rare path. **A P3 must name the mistake it causes**: *"an operator alerting on `failed to charge` misses every refund failure, because this file says `could not`"*. If you cannot state the specific operational mistake, the finding is below the bar — drop it.
 
-From the script's output, filter to source files, excluding test files, generated code, vendored dependencies, and pure configuration. Record the file list and count.
+P1 is narrow, and it is the severity that drifts. It is for data that should never have been written, not for data that is hard to find. A missing correlation id makes debugging slow; a logged bearer token makes it an incident. If a report carries more than two P1s, be suspicious of the third.
 
-### Step 2 — Detect the dominant conventions
+## What not to flag
 
-Before flagging anything on the descriptive axis, determine what "normal" looks like in this codebase. Sample up to 40 source files (or all of them, whichever is smaller). For each of the following axes, tally the distinct patterns and pick the majority:
+Each of these spends the reader's attention on something they cannot act on, or argues against a decision they already made:
 
-| Axis | What to record |
-|------|---------------|
-| Logger library | e.g. `slog`, `zap`, `logrus`, `winston`, `pino`, stdlib `logging`, direct `print`/`console.log` |
-| Log call shape | structured (key-value fields) vs string-formatted vs mixed |
-| Field-name casing | `snake_case`, `camelCase`, `kebab-case` |
-| Correlation field names | e.g. `request_id`, `trace_id`, `user_id` — which names are used |
-| Error-message capitalization | leading uppercase vs lowercase |
-| Error-message trailing punctuation | period vs none |
-| Error-layer separator | `": "`, `" - "`, `", caused by "`, etc. |
-| Error-message verb form | `"failed to X"`, `"could not X"`, `"X failed"`, `"error while X"` |
-| Error construction pattern | sentinel errors, factory helpers, wrap-at-call-site, exception subclasses |
+- **A missing log anywhere that is not an I/O boundary.** "This pure function should log" is the single most common way an observability review turns into noise. The boundaries that earn a finding are: outbound calls, inbound handlers, retries, fallbacks and degraded-mode branches, and startup configuration. Everywhere else, silence is the correct default.
+- **The same failure logged again at every layer.** One owner per failure — usually the handler at the top — with inner layers wrapping and returning. A repo function that returns a wrapped error without logging is doing it right, not missing a log.
+- **A code defect rather than an observability defect.** A missing timeout, a swallowed retry budget, a race — real observations, wrong review. They belong to `review-code`; note them in passing at most. This skill judges the artifacts: the log lines emitted and the error messages constructed.
+- **A consistent house style you would have chosen differently.** Capitalized error messages, `traceId` over `trace_id`, a logger that is not the one you like. If it is uniform, it is not a finding.
+- **Anything under `fixtures/`, `testdata/`, or `__fixtures__/`.** Those files are test input; their defects are usually the point.
 
-**Decision rule for flagging outliers:**
+## Collapse patterns, then cap at ten
 
-- A pattern that represents **≥70%** of the sampled occurrences is the dominant convention. Flag minority-pattern instances as outliers.
-- If the top pattern is **<70%** but **≥40%**, the codebase has a legitimate split. Do **not** flag either side as an outlier. Instead raise a single P3 pattern finding: "codebase uses two conventions for <axis>; pick one." List representative files for both sides.
-- If no pattern exceeds 40%, the codebase is chaotic on that axis. Raise a single P2 pattern finding naming the chaos and listing the top two or three variants.
+Observability problems are uniform in a way most defects are not: if a codebase logs unstructured strings it does so everywhere, and if one handler is missing a correlation id they all are. N findings for N instances of one pattern is noise that hides the two findings that matter. Collapse them into **one** finding that names the pattern, lists the affected locations, and prescribes the codebase-wide fix, at the highest severity among them.
 
-Record the detected conventions and use them as the baseline in Step 3. Include a short "Detected conventions" block at the top of the final report so the reader can see what you anchored against (and catch you if you anchored wrong).
+Then cap the report at ten. It is a ceiling, not a target: four real findings means a four-finding report. Include every P1, then fill with P2s and P3s by impact. If you cut any, end with `Note: N additional findings omitted (X P2, Y P3) — re-run after addressing these to surface what remains.`
 
-### Step 3 — Choose execution strategy
+Batches of ten are what people actually apply in one pass; larger reports age out or get half-applied. The cap also works against the "asked to find things, so finds things" reflex — and on a codebase that is genuinely well instrumented, the right report is a short one that says so.
 
-- **1–2 files → Direct mode**: Read the files, evaluate against the Criteria below, then proceed to Pattern Collapsing.
-- **3+ files → Parallel mode**: Batch files, spawn subagents, collect results, merge, then proceed to Pattern Collapsing.
-
-### Parallel Review Mode
-
-Use this mode when 3 or more source files are discovered.
-
-#### Batching
-
-Group files into batches based on total file count:
-
-| Total files | Files per batch | ~Subagents |
-|-------------|-----------------|------------|
-| 3–10        | 1               | 3–10       |
-| 11–20       | 2               | 6–10       |
-| 21+         | 3               | 7–10       |
-
-#### Spawn subagents
-
-For each batch, use `Agent(subagent_type="general-purpose")`. **Spawn all subagents in a single message** so they run in parallel.
-
-Each subagent prompt MUST include:
-
-1. The file paths in its batch (instruct the subagent to read them)
-2. The **Criteria** section from this skill — copy it verbatim into the prompt
-3. The **Severity** section from this skill — copy it verbatim into the prompt
-4. The **detected conventions** from Step 2 — so the subagent knows what counts as an "outlier" on the descriptive axes
-5. The structured output format below
-6. The explicit instruction: **"Do NOT use the Bash tool. Do NOT run any shell commands. Use only Read, Grep, and Glob tools. Return findings only."**
-7. The explicit instruction: **"For every P3 finding, you MUST state a concrete consequence in the `explanation` field: 'a caller/operator would likely \<specific operational mistake\> because of this.' Omit P3 findings that lack this claim."**
-8. The explicit instruction: **"For the `pattern` field, use a short, reusable label that names the underlying anti-pattern (e.g., 'unstructured logging', 'error messages drop wrapped cause', 'PII in request logs'). If two findings in your batch stem from the same root cause, they MUST use the same pattern label."**
-
-Instruct each subagent to return findings in this exact delimited format (one block per finding):
-
-```
----FINDING---
-priority: P<1|2|3>
-location: <file:line>
-title: <short title>
-category: <Logging Consistency|Log Level|Log Value|Missing Logs|Error Message Quality|Error Message Consistency>
-axis: <prescriptive|descriptive>
-pattern: <short label for the underlying anti-pattern — use the SAME label across findings that share the same root cause>
-explanation: <what is wrong and why it matters operationally>
-fix: <concrete prescription>
-done_when: <verifiable criterion>
----END---
-```
-
-If the subagent finds no issues for its batch, it should return `---NO-FINDINGS---`.
-
-#### Collect and merge
-
-After all subagents return:
-
-1. Parse each subagent's structured findings
-2. Combine into a single list, sorted by priority (P1 first)
-3. Deduplicate: if two findings share the same `location` (file:line) AND the same `category`, keep only the one with the highest priority
-4. Group findings by `pattern` label — findings from different subagents that used the same (or very similar) pattern label share a root cause and will be collapsed in the Pattern Collapsing step
-
-#### Error fallback
-
-If a subagent fails or returns unparseable output, review those files directly (as in direct mode) and include a note in the report: `Note: Files [list] were reviewed directly due to subagent failure.`
-
-### Pattern Collapsing
-
-Both direct mode and parallel mode flow into this step before producing the final report.
-
-Observability problems tend to be uniform: if the codebase logs unstructured strings, it does so everywhere; if correlation ids are missing from one handler, they are usually missing from all of them. N per-file findings for the same pattern is noise. One finding that names the pattern and lists all affected locations is actionable.
-
-When you identify a shared root cause:
-
-1. **Collapse** the N per-file findings into **one finding** that names the pattern, lists all affected files, and prescribes the codebase-wide fix
-2. **Set severity** to the highest severity among the collapsed findings
-3. **Keep separate** any findings that share a category but stem from genuinely different root causes
-
-Examples of legitimate collapses:
-
-- 30 files using `logger.info("processing user %s", uid)` → one pattern: "codebase uses string-formatted logging throughout — no structured fields, log aggregators cannot filter or alert"
-- 12 inbound handlers with no `request_id` in logger context → one pattern: "inbound handlers do not attach correlation ids; operators cannot stitch together a single request across services"
-- 18 sites calling `fmt.Errorf("failed: %s", err.Error())` instead of `fmt.Errorf("failed: %w", err)` → one pattern: "errors are wrapped as strings, dropping the cause chain — `errors.Is`/`errors.As` no longer work"
-
----
-
-## Criteria
-
-### Logging Consistency *(mostly descriptive — see Step 2 baseline)*
-
-- One logger library per codebase. Mixed libraries or direct `print`/`console.log` alongside structured logging are flagged as outliers against the detected majority.
-- Field names for the same concept should be stable. Flag drift like `user_id` in one handler, `userId` in another, `uid` in a third.
-- Log call shape should be consistent. Structured and string-formatted calls mixed in the same codebase are flagged.
-
-### Log Level Appropriateness *(prescriptive)*
-
-Log levels must carry operational meaning or they are just decoration. Enforce these definitions regardless of current codebase practice:
-
-- **ERROR** — something the operator must act on. An unexpected failure, a dependency down, a programmer bug. *Not* for expected user-input rejections (bad password, 404 on a missing resource), because paging on those trains operators to ignore the channel.
-- **WARN** — a degraded or suspicious condition that was handled, but an operator should know it is happening (cache miss storm, retry succeeded after N attempts, falling back to the secondary provider).
-- **INFO** — state changes worth remembering after the fact: startup, shutdown, config load, user action that matters for audit.
-- **DEBUG** — the verbose channel for diagnosing a specific problem. Entry/exit traces, full payloads, loop counters belong here if anywhere.
-
-Flag:
-- ERROR used on user-caused conditions — this is the most common and most damaging level mistake.
-- WARN used as "mild error" without an operational meaning.
-- INFO inside hot loops or per-request in high-QPS paths.
-- The same failure logged at ERROR *and* propagated — pick one owner for the report. The usual owner is the top of the call stack (handler boundary), and inner layers wrap and return.
-
-### Log Value *(prescriptive)*
-
-- **No tautological messages** — `"an error occurred"`, `"something went wrong"`, `"failed"` with no further context. These are worse than useless because they burn alert volume without giving the operator anywhere to start.
-- **Errors are logged with the error chain**, not just `err.Error()` or `str(e)`. The wrapped cause and stack are what the operator needs.
-- **No entry/exit noise** outside DEBUG. `logger.info("entering processOrder")` is free cost with no operational value.
-- **No sensitive data in logs** — credentials, auth headers, full request/response bodies with user data, query strings containing tokens, PII that was not explicitly allowlisted. This is P1 because it is often a compliance and security incident rolled into one.
-- **Correlation context** — at minimum a request id or trace id attached to the logger at inbound handler boundaries, so logs from a single request can be stitched together. Missing correlation context at a handler boundary is prescriptive and P2.
-
-### Missing Logs *(prescriptive, anchored to I/O boundaries)*
-
-The skill is deliberately narrow about where it demands logs. Flagging "this pure function should log" is noise. Flag **only** when the absence of a log at a specific kind of boundary would cause real operational blindness:
-
-- **External calls** (outbound HTTP, gRPC, queue publish, DB query on a separate service) with no log on success, failure, or latency
-- **Inbound request handlers** with no access-log equivalent (one log per request, with status and duration)
-- **Retries or fallbacks taken silently** — the entire point of a retry is to let operators know a dependency is flaking. A retry that logs nothing is a retry that hides degradation.
-- **Degraded-mode branches** (fallback to cache, secondary provider, default value) taken silently
-- **Startup configuration** loaded silently — no way to answer "which config did this process load" from the logs alone
-
-If you are tempted to flag a missing log somewhere that is not one of these boundaries, don't.
-
-### Error Message Quality *(prescriptive)*
-
-Judging the *messages themselves*, not the handling strategy.
-
-- **Actionable** — the message should give the recipient (usually an operator reading a log or a developer reading a stack trace) enough to start debugging. `"failed to connect to postgres at postgres-primary:5432: dial tcp: connection refused"` beats `"db error"`.
-- **Preserves the cause chain** — when wrapping, the inner error must be retrievable. In Go: `fmt.Errorf("...: %w", err)` not `fmt.Errorf("...: %s", err.Error())`. In Python: `raise X from e` not bare `raise X`. In JS/TS: `new Error("...", { cause: err })`. Flag sites that lose the chain, and flag sites that *duplicate* the inner message on top of the wrap (`"failed to load config: failed to open file: open: no such file"`).
-- **Safe** — no secrets, tokens, full payloads, or PII inside error messages. Error messages frequently end up in logs, HTTP responses, or third-party error reporters.
-- **Specific enough to locate** — avoid messages so generic they collide with dozens of call sites. `"invalid input"` with no further context is un-greppable; `"invalid input: email missing @"` is.
-
-### Error Message Consistency *(descriptive — flagged against Step 2 baseline)*
-
-- Same format convention across the codebase (capitalization, trailing punctuation, layer separator, verb form). Outliers against the detected majority are findings.
-- Same domain concept uses the same phrasing. If `"user not found"` appears in six places, a stray `"no such user"` is a finding — not because it is wrong, but because operators grepping for the known phrase will miss it.
-- Error construction goes through the same pattern (sentinel, factory, wrap, exception subclass). Mixing patterns arbitrarily across files is a finding; a principled split (e.g. sentinels for domain errors, wraps for infrastructure errors) is not.
-
----
-
-## Severity
-
-- **P1**: Secrets, tokens, auth headers, or PII emitted into logs or error messages. Errors silently swallowed with no log and no propagation. Log format strings that always crash at runtime (argument mismatch that throws on every call). These are incidents waiting to happen; they page someone eventually and the blame lands on observability debt.
-
-- **P2**: Log levels misused in ways that cause real operational pain — ERROR on expected user-input failure (pages oncall for nothing), or operationally-critical failure logged at DEBUG (invisible to alerts). Missing logs at I/O boundaries (external calls, inbound handlers, silent retries/fallbacks). Error wrapping that drops the cause chain so `errors.Is`/`except X from e`/`cause` no longer works. Codebase-wide unstructured logging (one collapsed finding, P2) — log aggregators cannot filter or alert on string-formatted logs. Missing correlation ids at inbound handler boundaries.
-
-- **P3**: Field-name drift, formatting inconsistency, entry/exit noise, unactionable messages on rare paths, consistency outliers against a clear dominant convention. P3 findings **must** state a concrete consequence: *"an operator grepping for `failed to` misses half the failures because this site says `could not`"*, not *"this is inconsistent"*. If you cannot state a specific operational mistake that would follow, omit the finding.
-
----
+When a report comes out short, close it with a sentence or two naming what you looked at and deliberately did not raise — the pure helpers that correctly stay silent, the inner layer that wraps without logging because the handler owns the report. Silence reads as a shallow review otherwise, and the maintainer cannot tell a considered pass from a skim.
 
 ## Output
 
-You MUST produce a report following the exact structure shown in [REFERENCE.md](REFERENCE.md). When using parallel mode, the lead assembles the unified report from subagent findings. The format is identical regardless of execution mode.
-
-The report begins with a short **Detected conventions** block showing what Step 2 anchored against — logger library, log-call shape, field casing, error-message format. This lets the reader sanity-check the baseline before reading descriptive findings.
-
-Each finding MUST include:
+Produce a report following the structure in [REFERENCE.md](REFERENCE.md). Each finding must include:
 
 - **Priority** (P1/P2/P3) in the H3 header
-- **Location** (file:line, or a list of locations if the finding was pattern-collapsed)
-- **Axis** (prescriptive or descriptive) — so the reader can tell whether this is an enforced rule or a consistency call
+- **Location** (file:line, or a list of locations if the finding was collapsed)
+- **Axis** (prescriptive or descriptive) — so the reader can tell an enforced rule from a consistency call
 - **Explanation** of the problem and the operational consequence
-- **Fix** — concrete prescription. For consistency findings, reference the detected baseline ("the dominant convention in this codebase is lowercase leading verbs; this site uses capitalized"). For prescriptive findings, reference the rule ("correlation context is required at inbound handler boundaries").
-- **Done when** — a verifiable criterion checkable by reading the diff. Example: *"Every handler in `internal/http/` obtains a logger from `ctx` that already has `request_id` attached."* NOT: *"Correlation context is added."*
+- **Fix** — concrete prescription. For a consistency finding, reference the detected baseline ("the dominant form here is lowercase `failed to X: <cause>`"). For a prescriptive one, reference the rule.
+- **Done when** — a criterion verifiable by reading the diff. "Every handler in `internal/http/` obtains its logger from `ctx` with `request_id` already bound." NOT "correlation context is added."
