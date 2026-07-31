@@ -10,13 +10,6 @@
   },
   "plugins": [
     {
-      "name": "circuits",
-      "description": "Skills and agents to help with microcontroller and other hardware projects.",
-      "source": "./plugins/circuits",
-      "category": "hardware",
-      "keywords": ["hardware", "electronics", "datasheets", "wavejson", "circuit-synth"]
-    },
-    {
       "name": "specbeads",
       "description": "Skills to make the use of spec-kit and beads streamlined.",
       "source": "./plugins/specbeads",
