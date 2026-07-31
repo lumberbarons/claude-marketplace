@@ -1,0 +1,99 @@
+{
+  "skill_name": "review-code",
+  "baseline": "no skill at all, and the original 249-line v1 skill \u2014 see README.md",
+  "evals": [
+    {
+      "id": 0,
+      "name": "go-checkout-srp-and-security",
+      "prompt": "review the code in {FIXTURES}/go-checkout",
+      "expected_output": "Catches the client-controlled X-Admin header gating refunds (P1), PlaceOrder doing validation + pricing + persistence + notification, the volume-discount ladder re-implemented at two call sites when pricing.go already owns it (one collapsed finding), the unenforced Init-before-PlaceOrder coupling that silently zeroes tax, and OrderRepo.Query/Tx leaking the driver past the repository boundary \u2014 without claiming NewOrderRepo builds its own connection, without inflating the replaceable clock var to P1, and without inventing a finding against the clean pricing.go.",
+      "files": [
+        "fixtures/go-checkout"
+      ],
+      "assertions": [
+        "Flags RequireAdmin/RoleOf for deciding admin status from the caller-controlled X-Admin header, and rates it P1",
+        "Names the refund endpoint (or the privilege it grants) as what the forged header buys, rather than only observing that header-based auth is weak",
+        "Flags Service.PlaceOrder for combining validation, pricing, persistence and notification in a single function",
+        "Reports the duplicated volume-discount ladder \u2014 pricing.go's VolumeDiscountFraction re-implemented inline in PlaceOrder and again in Handler.quote \u2014 as ONE collapsed finding rather than one per site",
+        "Flags the Init-before-PlaceOrder temporal coupling, naming the consequence that a skipped Init leaves s.rates nil so tax is silently computed as zero",
+        "Flags OrderRepo.Query and/or Tx() for leaking the database driver past the repository boundary, naming handler.refund writing SQL in the HTTP layer as the misuse it enables",
+        "Flags the refund endpoint's non-idempotent UPDATE (no `refunded = false` guard, so a replay refunds twice) or its 200 {\"refunded_cents\": 0} response for an unknown id",
+        "Identifies processOrder or Tx() as a naming problem; if filed as a standalone finding it is rated P3",
+        "Does NOT claim NewOrderRepo opens or builds its own database connection \u2014 the *sql.DB is injected by the caller",
+        "Does NOT rate the package-level `clock = time.Now` var P1; it is an existing test seam and is at most P3",
+        "Does not fault pricing.go's own arithmetic or propose restructuring it \u2014 naming it as the canonical home the other two sites should call is correct",
+        "Reports at most one P1 finding; a report that assigns no P-levels at all does not satisfy this (having zero P1s with several P2s does)",
+        "Report follows REFERENCE.md: an 'N files reviewed, M issues found' header line and H3 findings tagged [P1]/[P2]/[P3] with a **Location:** line",
+        "Every finding carries a concrete 'done when' criterion verifiable by reading the diff",
+        "Total findings do not exceed 10"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "ts-api-pattern-collapsing-and-api-shape",
+      "prompt": "review the code in {FIXTURES}/ts-api",
+      "expected_output": "Flags the user endpoints returning the whole row including password_hash and reset_token (P1); collapses the three module-scope Pool constructions into one finding rather than three; flags the divergent shapes of getUser/getOrder/getSession and the raw snake_case row types leaking the schema; flags getSession's bare catch turning a database outage into a 401; leaves the pure money.ts alone.",
+      "files": [
+        "fixtures/ts-api"
+      ],
+      "assertions": [
+        "Flags getUserHandler/updateUserHandler responding with the full UserRow including password_hash and reset_token, and rates it P1",
+        "Reports the module-scope `new Pool(...)` in users.ts, orders.ts and sessions.ts as ONE collapsed finding listing the affected files, not as a separate finding per file",
+        "Rates that module-scope Pool finding P2 or P3 \u2014 not P1, since vi.mock provides a seam in TypeScript",
+        "Does not claim the module-scope Pool makes the route modules untestable outright \u2014 acknowledges that module mocking provides a seam, even while faulting the design",
+        "Flags the divergent result shapes across sibling lookups (getUser returns null, getOrder throws NotFoundError, getSession returns {ok, data}), naming the cost to a consumer that wants to share code across them",
+        "Recommends the exported row interfaces stop being the response type across orders and sessions too, not only users.ts",
+        "Flags getSession's bare `catch { return { ok: false } }` for collapsing a database failure into 'no session', naming the consequence that an outage surfaces as 401 with nothing logged",
+        "Flags processOrder in orders.ts for a name that does not say it cancels an order",
+        "Raises no finding against money.ts, which is pure, total and single-purpose",
+        "Every P1 reported is a security finding; no more than two P1s in total",
+        "Report follows REFERENCE.md: an 'N files reviewed, M issues found' header line and H3 findings tagged [P1]/[P2]/[P3] with a **Location:** line",
+        "Every finding carries a concrete 'done when' criterion verifiable by reading the diff",
+        "Total findings do not exceed 10, with a truncation footer if any were cut"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "py-clean-no-false-positives",
+      "prompt": "review the code in {FIXTURES}/py-clean",
+      "expected_output": "Stays quiet. Dependencies are injected through a Protocol, functions hold one abstraction level, the error hierarchy carries actionable context, names say what they do. Correct output is zero findings, or at most one P3.",
+      "files": [
+        "fixtures/py-clean"
+      ],
+      "assertions": [
+        "Reports zero findings, or at most one finding and that finding is P3",
+        "Claims no correctness, security or data-loss defect, under any severity vocabulary",
+        "Does NOT flag DEFAULT_RATES or MappingProxyType as shared mutable state \u2014 the view is read-only and TableRateSource copies it",
+        "Does NOT flag the RateSource Protocol as premature abstraction, nor ask for a second implementation to justify it",
+        "Does NOT flag pricing/__init__.py's re-exports as a module with unrelated exports",
+        "Does NOT ask for returned error values in place of the raised PricingError hierarchy \u2014 the idiom is applied consistently",
+        "States in words that the design is sound and names at least one thing carrying it \u2014 not merely a zero count",
+        "Does not pad the report with non-design housekeeping items such as __pycache__, .gitignore, or a missing lint/type-checker config filed as a finding"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "py-worker-error-strategy-and-severity-floor",
+      "prompt": "review the code in {FIXTURES}/py-worker",
+      "expected_output": "Separates real design defects (the import-time PaymentClient singleton reading os.environ, charge_customer collapsing declines and outages into None while retrying both, process_batch reading + validating + charging + reporting + emailing, PaymentClient.charge doubling as a refund call) from noise, keeps the singleton at P2 rather than P1, and does not file linter-owned findings about the length or nesting of process_batch.",
+      "files": [
+        "fixtures/py-worker"
+      ],
+      "assertions": [
+        "Flags the module-scope `client = PaymentClient(api_key=os.environ[...])` for executing at import time, naming the consequence that importing the package fails without the env var and every consumer binds the same instance",
+        "Rates that singleton finding P2 or P3 \u2014 not P1, since monkeypatch.setattr provides a seam in Python",
+        "Flags charge_customer for catching bare Exception and returning None, naming the consequence that a card decline is retried like a network timeout and no caller can tell decline from outage from bug",
+        "Flags that charge_customer mints a fresh uuid4 idempotency key on every call, so re-running the nightly batch re-charges every customer",
+        "Flags process_batch for combining CSV reading, row validation, charging, report writing and emailing in one function",
+        "Flags PaymentClient.charge being reused for refunds by passing a charge_id where customer_id is expected and a negative amount",
+        "Flags report.handle_data for a name that does not say it totals charges per region, or for its `ValueError('bad input')` messages that name neither the row nor the field",
+        "Files no finding whose *claim* is that process_batch is too long or too deeply nested \u2014 naming its size while describing an SRP problem is fine, filing size itself as the defect is not",
+        "If the time.sleep backoff in charge_customer is raised at all, it is rated no higher than P3",
+        "Reports at most one P1 finding; a report that assigns no P-levels at all does not satisfy this (having zero P1s with several P2s does)",
+        "Report follows REFERENCE.md: an 'N files reviewed, M issues found' header line and H3 findings tagged [P1]/[P2]/[P3] with a **Location:** line",
+        "Every finding carries a concrete 'done when' criterion verifiable by reading the diff",
+        "Total findings do not exceed 10"
+      ]
+    }
+  ]
+}
