@@ -23,3 +23,5 @@ build/
 
 # Skill-creator workspaces (fixtures + iteration runs, not shipped)
 plugins/*/skills/*-workspace/
+
+.claude/worktrees
