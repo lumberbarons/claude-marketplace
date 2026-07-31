@@ -14,6 +14,13 @@ You already know what a bad test looks like — assertions that cannot fail, sha
 
 What follows is only the local policy you could not infer. Prescribing the review itself made reviews no better and measurably slower: a 221-line version of this skill scored identically to this one across four fixtures while spending 22% more tokens, because attention went to restating criteria instead of reading the tests.
 
+## Arguments
+
+`$ARGUMENTS` may carry flags alongside a path. Strip the flags first; whatever remains is the path.
+
+- **`--json <path>`** — additionally write a findings file at that path, per [FINDINGS.md](../../FINDINGS.md). Off by default; the markdown report is unchanged either way.
+- **`--non-interactive`** — ask no questions. Where this skill would otherwise prompt, report the outcome and stop.
+
 ## Scope
 
 Determine the review scope before discovering files:
@@ -28,9 +35,11 @@ Determine the review scope before discovering files:
   ```
 
 Handle the script's exit codes:
-- **0 with output** — use the listed paths.
-- **0 with empty output** — branch has no diff vs the default branch. Tell the user and ask which path to review.
-- **non-zero** — script prints a message to stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay the message and ask the user which path to review.
+- **0 with output** — review the listed paths.
+- **0 with empty output** — nothing is in scope. Interactively, say so and ask which path to review; under `--non-interactive`, report `no_scope` and stop.
+- **non-zero** — the script explains itself on stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay that message, then ask which path to review, or under `--non-interactive` report `error` with the message and stop.
+
+A review that ran and found nothing, and a review that never ran, both end with zero findings and mean opposite things — so say which happened, in the report and in the findings file's `status`. A caller that cannot tell them apart reports a broken pipeline as a clean codebase.
 
 The script returns paths language-blind. Filter to test files; keep the production sources in view too, since a gap is only visible against the code nothing tests.
 
@@ -78,3 +87,5 @@ Produce a report following the structure in [REFERENCE.md](REFERENCE.md). Each f
 - **Explanation** of the problem and why it matters
 - **Fix** — concrete prescription. For a quality bug, exactly what changes ("replace the package-level `db` var with a per-test instance built in each test's setup"). For a gap, exactly which scenario or assertion is missing ("add a case where the input slice is nil; the table has only empty and non-empty").
 - **Done when** — a criterion verifiable by reading the test file. "TestFoo has no package-level mutable state; all state is initialized inside t.Run or TestFoo itself." NOT "the test is properly isolated."
+
+When `--json <path>` was given, write the findings file described in [FINDINGS.md](../../FINDINGS.md) as well. Two fields need care because nothing downstream can recover them if they are wrong: `files` must list every path a finding touches, and `pattern` must be the slug that names its root cause, taken from the vocabulary in [REFERENCE.md](REFERENCE.md). Findings you collapsed together share a root cause, so they share a slug — that pairing is what lets a later run recognise this finding as one it has already reported.

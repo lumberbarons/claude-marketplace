@@ -14,6 +14,13 @@ You already know what bad observability looks like — a bearer token in a reque
 
 What follows is only the local policy you could not infer. Prescribing the review itself bought nothing measurable: a 249-line version of this skill found the same defects as this one across four fixtures while spending 23% more tokens, and because it set no ceiling on report length it filed up to fifteen findings in a single report.
 
+## Arguments
+
+`$ARGUMENTS` may carry flags alongside a path. Strip the flags first; whatever remains is the path.
+
+- **`--json <path>`** — additionally write a findings file at that path, per [FINDINGS.md](../../FINDINGS.md). Off by default; the markdown report is unchanged either way.
+- **`--non-interactive`** — ask no questions. Where this skill would otherwise prompt, report the outcome and stop.
+
 ## Scope
 
 Determine the review scope before discovering files:
@@ -28,9 +35,11 @@ Determine the review scope before discovering files:
   ```
 
 Handle the script's exit codes:
-- **0 with output** — use the listed paths.
-- **0 with empty output** — branch has no diff vs the default branch. Tell the user and ask which path to review.
-- **non-zero** — script prints a message to stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay the message and ask the user which path to review.
+- **0 with output** — review the listed paths.
+- **0 with empty output** — nothing is in scope. Interactively, say so and ask which path to review; under `--non-interactive`, report `no_scope` and stop.
+- **non-zero** — the script explains itself on stderr (path not found, not a git repo, on the default branch with no path, detached HEAD, or default branch indeterminate). Relay that message, then ask which path to review, or under `--non-interactive` report `error` with the message and stop.
+
+A review that ran and found nothing, and a review that never ran, both end with zero findings and mean opposite things — so say which happened, in the report and in the findings file's `status`. A caller that cannot tell them apart reports a broken pipeline as a clean codebase.
 
 The script returns paths language-blind. Filter to source files, excluding tests, generated code, and vendored dependencies.
 
@@ -88,3 +97,5 @@ Produce a report following the structure in [REFERENCE.md](REFERENCE.md). Each f
 - **Explanation** of the problem and the operational consequence
 - **Fix** — concrete prescription. For a consistency finding, reference the detected baseline ("the dominant form here is lowercase `failed to X: <cause>`"). For a prescriptive one, reference the rule.
 - **Done when** — a criterion verifiable by reading the diff. "Every handler in `internal/http/` obtains its logger from `ctx` with `request_id` already bound." NOT "correlation context is added."
+
+When `--json <path>` was given, write the findings file described in [FINDINGS.md](../../FINDINGS.md) as well. Two fields need care because nothing downstream can recover them if they are wrong: `files` must list every path a finding touches, and `pattern` must be the slug that names its root cause, taken from the vocabulary in [REFERENCE.md](REFERENCE.md). Findings you collapsed together share a root cause, so they share a slug — that pairing is what lets a later run recognise this finding as one it has already reported.

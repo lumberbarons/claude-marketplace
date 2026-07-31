@@ -9,8 +9,8 @@ Turn structured review findings into hew issues, deduplicated by a stable key so
 finding does not get filed twice when a review runs again.
 
 > [!IMPORTANT]
-> [REFERENCE.md](REFERENCE.md) carries the pattern vocabulary, the findings and plan-file
-> shapes, and a worked example. Read it before computing keys.
+> [REFERENCE.md](REFERENCE.md) carries slug handling, the findings and plan-file shapes, and a
+> worked example. Read it before computing keys.
 
 This skill does not run a review. If the findings are stale, re-run the review first.
 
@@ -57,8 +57,10 @@ review-key: <skill>/<pattern>/<scope>
 ```
 
 - **`skill`** — `o11y`, `tests`, `docs`, or `code`.
-- **`pattern`** — a slug from the vocabulary in REFERENCE.md. If nothing fits, use
-  `other-<your-slug>`; recurring `other-` slugs are the signal to extend the vocabulary.
+- **`pattern`** — comes from the review itself when the findings file carries one, and must be
+  passed through unchanged; re-spelling a slug here orphans every issue already filed under the
+  original. Only when a finding arrives without one, pick from the vocabulary in the relevant
+  critique skill's `REFERENCE.md`.
 - **`scope`** — **derive this mechanically**: the deepest directory that contains every
   affected file, or the file path itself when there is exactly one. Do not choose it by
   judgement. Two runs that anchor the same finding at `internal/http` and

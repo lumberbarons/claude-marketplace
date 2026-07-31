@@ -1,51 +1,21 @@
 # Reference
 
-Pattern vocabulary, file shapes, and a worked example for `raise-issues`.
+Slug handling, file shapes, and a worked example for `raise-issues`.
 
-## Pattern vocabulary
+## Pattern slugs
 
-The `pattern` component of a review key must come from this list. It is a closed vocabulary for
-one reason: a free-form slug drifts between runs — `unstructured-logging` one cycle,
-`string-formatted-logs` the next — and a drifted slug is a duplicate issue.
+The `pattern` component of a review key is not defined here. Each critique review skill owns the
+vocabulary for its own domain, in its `REFERENCE.md` — `review-o11y` names logging anti-patterns,
+`review-tests` names test-quality ones, and so on. The reviewer picks the slug, because the
+reviewer is what knows which root cause it just identified.
 
-Use `other-<slug>` when nothing fits. Recurring `other-` slugs are the signal to add an entry
-here rather than to keep improvising.
+That leaves this skill with one rule rather than a list: **pass the slug through unchanged.**
+Normalising, re-spelling, or "tidying" a slug here breaks identity for every issue already filed
+under the original, which is the one failure this whole scheme exists to prevent.
 
-**o11y**
-
-```
-credential-in-log            pii-in-log                  error-on-user-input
-failure-below-alert-level    missing-log-io-boundary     silent-retry
-silent-fallback              unstructured-logging        missing-correlation-id
-error-wrap-drops-cause       tautological-message        entry-exit-noise
-field-name-drift             message-format-drift        mixed-logger-libraries
-startup-config-unlogged      double-reported-failure
-```
-
-**tests**
-
-```
-tautological-assertion       shared-mutable-state        dead-expectation
-loose-matching               isolation-hazard            reimplemented-logic
-permanently-skipped-test     unclear-test-name           missing-coverage
-missing-edge-case
-```
-
-**docs**
-
-```
-broken-reference             stale-command               failing-quickstart
-missing-prerequisite         drifted-enumeration         derivable-content
-oversized-claude-md          hardcoded-local-path        missing-expected-output
-```
-
-**code**
-
-```
-single-responsibility        leaky-abstraction           untestable-seam
-unclear-naming               api-design                  error-handling-strategy
-duplicated-logic             dead-code
-```
+A finding that arrives with no slug — from a hand-written list, or a review that predates the
+findings file — needs one before it can be filed. Read the relevant skill's `REFERENCE.md` and
+pick from there; fall back to `other-<slug>` only when nothing fits.
 
 ## Findings file
 
