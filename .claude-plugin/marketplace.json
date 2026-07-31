@@ -36,6 +36,13 @@
       "source": "./plugins/decisions",
       "category": "workflow",
       "keywords": ["adr", "architecture", "decisions", "madr", "documentation", "policy", "specs", "review", "compliance"]
+    },
+    {
+      "name": "hew",
+      "description": "Skills for tracking work in GitHub Issues via the hew CLI. Files review findings as deduplicated issues using a stable review key, so a review that runs on a schedule does not re-file work it already tracked.",
+      "source": "./plugins/hew",
+      "category": "workflow",
+      "keywords": ["hew", "github-issues", "issues", "tracking", "review-findings", "triage", "workflow"]
     }
   ]
 }
