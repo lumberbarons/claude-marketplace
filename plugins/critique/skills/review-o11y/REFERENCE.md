@@ -77,6 +77,8 @@ When pattern collapsing merges N per-file findings into one, the Location line l
 
 Do not include items that passed review. Start with "N files reviewed, M issues found (severity breakdown)."
 
+The one exception is a short report on a well-instrumented codebase: there, close with a sentence or two naming what was considered and deliberately not raised, so the reader can tell restraint from a shallow pass. This is a closing note, not a section of passing rows.
+
 ### No tables in the findings section
 
 The detected-conventions block uses bullets, not tables. Findings are prose, not rows.
