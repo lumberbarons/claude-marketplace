@@ -222,12 +222,18 @@ stopped moving.
 
 ```bash
 git push -u origin HEAD:<prefix>/<n>-<slug>
-hew pr --testing "<the gate you ran, the tests you added>"
+hew pr --testing 'Added `TestSet_RefusesClosedIssue` and two siblings in `internal/cli/write_test.go`; `go test ./...` passes'
 ```
 
 The primer covers what `hew pr` composes and that the branch has to be pushed first. `--testing`
 is the one thing it cannot infer from the tracker, so supply it: a reviewer opening a draft PR
 wants to know what was actually verified, not to reconstruct it from the diff.
+
+Write the commands, test names, and paths in it as code spans. hew warns about unmarked code
+text in composed bodies, but the reason to bother is that the PR body is the one thing here
+written for a human in a browser rather than an agent in a terminal — and `go test -race ./...`
+set in proportional prose loses exactly the characters that carry its meaning. The same applies
+to any issue you file for discovered work.
 
 Commit conventions are in [REFERENCE.md](REFERENCE.md). The short version: conventional subject
 matching the branch prefix, and `Refs #<n>` rather than a second `Fixes #<n>` — the PR body

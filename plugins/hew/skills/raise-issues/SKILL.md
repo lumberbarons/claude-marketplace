@@ -104,6 +104,20 @@ Then act on what came back:
 The key lives in `where` because hew renders bodies as-is, which keeps it greppable by both
 `hew search` and `hew list --bodies` without needing a field the tracker does not have.
 
+**Write code-shaped text as code spans.** Paths, symbols, flags, commands, and error strings all
+go in backticks — `` `internal/http/middleware/logging.go:13` ``, `` `r.Header` ``,
+`` `fmt.Errorf("...: %w", err)` ``. Wrap the whole command rather than the flag inside it. hew
+checks composed bodies and warns about unmarked code text, but the reason is not the warning:
+review findings are made almost entirely of these strings, and an issue body is the one artifact
+here written for a human in a browser rather than an agent in a terminal. Rendered as
+proportional prose, the characters carrying the meaning — slashes, dots, double dashes — are
+exactly the ones that dissolve into the sentence around them.
+
+**The `review-key:` line is the exception — leave it bare.** It is an identity token that
+`hew search` matches as a substring, not prose anyone reads, and its format is load-bearing:
+re-rendering it orphans every issue already filed under the old spelling. Accept the warning on
+that line.
+
 ## Step 5 — Write a plan, then apply it
 
 Write every surviving finding to a JSONL plan (shape in REFERENCE.md) and apply it:

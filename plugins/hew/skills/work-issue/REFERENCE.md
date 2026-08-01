@@ -142,7 +142,7 @@ passes.
 
 ```bash
 $ git push -u origin HEAD:feat/39-write-commands-guard-closed
-$ hew pr --testing "3 new tests in internal/cli/write_test.go covering refusal, override, and re-close; go test ./... passes"
+$ hew pr --testing '3 new tests in `internal/cli/write_test.go` covering refusal, override, and re-close; `go test ./...` passes'
 opened draft PR #63 → Fixes #39
 ```
 
