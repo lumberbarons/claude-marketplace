@@ -12,17 +12,21 @@ tests rather than trailing them.
 > [REFERENCE.md](REFERENCE.md) carries the outcome-file schema, the quality-gate table, branch
 > and commit conventions, and a worked example. Read it before the verify step.
 
-Two things about hew shape this skill, and getting either wrong makes it worse than working the
-issue by hand:
+The `hew prime` primer — injected at session start — already carries the workflow, the
+conventions, and the command surface. This skill assumes it and does not restate it. If it is
+not in context, the SessionStart hook is per-repo and optional: run `hew prime` first.
 
-**Work ends at a PR, not at a close.** `hew pr` composes the PR from tracker state with exactly
-one `Fixes #n`, so the merge closes the issue. `hew close` means *wontfix* or *duplicate* — a
-human decision that no work was needed. Closing a delivered issue directly skips review and
-tells the tracker the opposite of what happened.
+Two of its rules do the most work here, and both are easy to undo by accident:
 
-**`hew start` is a lock.** It refuses an already-claimed issue with exit 3. That is what makes
-this safe to run on a schedule, or alongside another agent: two runs cannot take the same issue,
-and the loser just moves down the queue. Never reach for `--force` to get past it.
+**Closing is not delivering.** What closes a delivered issue is the merge, through the `Fixes #n`
+that `hew pr` composes. Reaching for `hew close` on work you actually did skips review entirely
+and records the opposite of what happened — which is what the primer's restriction on it is
+protecting.
+
+**Exit 3 is a feature.** `start` refusing a claimed issue is what makes this safe to run on a
+schedule beside another agent: two runs cannot take the same issue, and the loser just moves
+down the queue. `--force` is there for a human clearing a stuck claim; using it here would
+delete the only coordination the loop has.
 
 ## Arguments
 
@@ -53,28 +57,28 @@ behalf.
 Selection has to be deterministic, because a loop that picks differently on each tick cannot be
 reasoned about from its logs.
 
-**No issue number:** `hew ready` — open, non-epic, zero open blockers, priority-sorted. Take the
-first eligible entry. Empty output means the backlog is genuinely drained: that is
-`no_ready_work`, a real result, and worth distinguishing from every other way of finishing with
-nothing.
+**No issue number:** take the first eligible entry from `hew ready`. Empty output means the
+backlog is genuinely drained — that is `no_ready_work`, a real result, and worth distinguishing
+from every other way of finishing with nothing.
 
 **An issue number:** `hew show <n> --json`. If `epic` is true, descend (below). If it is closed,
 say so and stop — reopening is a human decision.
 
-**Epic descent.** Epics are trees, not work. `hew list --epic <n> --json` returns the children
-with `state`, `inProgress` and `openBlockers`; filter to `state: "open"` — unlike a bare `hew
-list`, the `--epic` form returns closed children too — and take the first with no open blockers.
-Prefer this over `hew epic status`, which renders progress but not blockers. Report the epic's
-progress, work exactly one child, and leave the epic open; the next invocation walks to the next
-child. If every child is closed, the epic itself is finished and a human should close it — say
-so rather than closing it yourself.
+**Epic descent.** The primer's rule against working an epic directly leaves the question of what
+to do instead. `hew list --epic <n> --json` returns the children with `state`, `inProgress` and
+`openBlockers`; filter to `state: "open"` — unlike a bare `hew list`, the `--epic` form returns
+closed children too — and take the first with no open blockers. Prefer this over `hew epic
+status`, which renders progress but not blockers. Report the epic's progress, work exactly one
+child, and leave the epic open; the next invocation walks to the next child. If every child is
+closed, the epic is finished and a human should close it — say so rather than closing it
+yourself.
 
 **Eligibility.** Skip and move to the next candidate when:
 
 | Condition | Why, and what to report |
 |---|---|
 | `inProgress` and assigned to someone else | Another agent or human holds it. Taking it would collide. |
-| `untriaged` (no priority or no type) | `hew start` needs `--priority`, and choosing one is a triage judgement. Interactively, ask. Unattended, skip and count it — a loop that silently assigns priorities is inventing the very signal the queue sorts on. |
+| `untriaged` (no priority or no type) | The `--priority` the primer says `start` needs is a triage judgement, not a default. Interactively, ask. Unattended, skip and count it — a loop that assigns priorities to get past the prompt is inventing the very signal the queue sorts on. |
 | Open blockers | `hew ready` already excludes these; if one arrived via an explicit number, name the blockers and stop. |
 
 If ready work exists but none of it is eligible, that is **not** an empty backlog. Report
@@ -89,8 +93,8 @@ Stop here under `--dry-run`, after showing the resolved target.
 hew start <n>
 ```
 
-Exit 3 means someone claimed it between your read and your write. That is the lock working, not
-an error: go back to Step 1 and take the next candidate.
+Exit 3 here means someone claimed it between your read and your write — the lock working, not an
+error. Re-resolve from Step 1 rather than treating it as a failed run.
 
 Resuming your own work is different from claiming — if `hew show <n> --json` already lists you
 in `assignees` with `inProgress` true, the issue is yours from an earlier run. Skip `hew start`
@@ -102,16 +106,13 @@ and pick up where the branch left off.
 hew show <n> --json
 ```
 
-The `body` field is markdown with the sections hew's conventions prescribe. Each one answers a
-different question, and skipping any of them is how scope creep starts:
+`body` is markdown in the sections the primer lists. How to read them is the part worth saying:
 
-- **`### Where`** — the files and functions in scope. This is a boundary, not a hint. Every path
-  named here should appear in your final diff, and paths not named here should not.
-- **`### Problem`** or **`### Goal`** — what is wrong, or what is wanted.
-- **`### Fix`** or **`### Approach`** — the prescription. Follow it unless it is demonstrably
-  wrong, in which case say why before diverging.
-- **`### Done when`** — the acceptance checklist. This is the most valuable section in the issue
-  and the next step is built on it.
+- **`### Where`** is a boundary, not a hint. Every path it names should appear in your final
+  diff, and paths it does not name should not.
+- **`### Fix`** / **`### Approach`** is a prescription. Follow it unless it is demonstrably
+  wrong, in which case say why before diverging rather than quietly doing something else.
+- **`### Done when`** is the acceptance checklist, and everything below is built on it.
 
 **If `### Done when` is missing or empty, write one before touching any code**, and show it to
 the user. Derive it from the Fix and the Where: each item must be verifiable by reading the
@@ -188,17 +189,10 @@ configuration, migrations, documentation, static assets, CI manifests, and wirin
 branching logic have nothing to assert about. Say which applied and why in the report; silently
 skipping the tests and silently having nothing to test look identical from outside.
 
-**Work discovered along the way goes in the tracker, not in this diff.** Search first so you do
-not file what is already there, then file it against the issue that surfaced it:
-
-```bash
-hew search <terms>
-hew create --type bug --title "..." --where "..." --problem "..." \
-  --fix "..." --done-when "..." --discovered-from <n>
-```
-
-Report the new issue number and carry on. Fixing it here instead buries an unrelated change in a
-PR nobody will look for it in.
+**Work discovered along the way goes in the tracker, not in this diff.** The primer gives the
+sequence — search for duplicates, then create with `--discovered-from <n>`. Report the new number
+and carry on. Fixing it inline instead buries an unrelated change in a PR nobody will think to
+look for it in.
 
 ## Step 6 — Verify
 
@@ -223,17 +217,14 @@ stopped moving.
 
 ## Step 7 — Ship
 
-Commit, push, and let hew compose the PR from what the tracker already knows:
-
 ```bash
 git push -u origin HEAD:<prefix>/<n>-<slug>
-hew pr --testing "<how you verified it — the gate you ran, the tests you added>"
+hew pr --testing "<the gate you ran, the tests you added>"
 ```
 
-`hew pr` infers the issue from your claim, titles it from the issue, fills What from `### Fix`
-and Why from `### Problem`, and includes exactly one `Fixes #n`. Supply `--testing`, which it
-cannot know. Push before calling it — GitHub cannot open a PR for a ref it cannot see. The PR
-opens as a draft, which is the point: the work is delivered for review, not merged.
+The primer covers what `hew pr` composes and that the branch has to be pushed first. `--testing`
+is the one thing it cannot infer from the tracker, so supply it: a reviewer opening a draft PR
+wants to know what was actually verified, not to reconstruct it from the diff.
 
 Commit conventions are in [REFERENCE.md](REFERENCE.md). The short version: conventional subject
 matching the branch prefix, and `Refs #<n>` rather than a second `Fixes #<n>` — the PR body
