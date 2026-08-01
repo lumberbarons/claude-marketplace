@@ -13,6 +13,7 @@
       ],
       "assertions": [
         "Calls `hew ready` to select the target rather than `hew list` or picking an issue by judgement",
+        "Works the highest-priority ready issue \u2014 the first entry of `hew ready` \u2014 rather than re-ranking by what looks quick or self-contained (the fixture puts a lower-priority but easier-looking issue below the target)",
         "Calls `hew start <n>` before making any file edit \u2014 the claim precedes the work, so a parallel agent cannot take the same issue",
         "Creates a branch named with the `fix/` prefix (the issue is type bug) and containing the issue number",
         "Writes test(s) and runs them to observe a failure BEFORE writing the implementation \u2014 the command log shows a test run between the branch creation and the first source edit",
@@ -39,6 +40,7 @@
         "Lists the epic's children (`hew list --epic 40 --json` or equivalent) to find candidates",
         "Filters out children whose `state` is `closed`, which the --epic listing includes",
         "Filters out children with a non-empty `openBlockers` array",
+        "Picks the highest-priority eligible child, sorting them explicitly rather than trusting the `--epic` listing order (the fixture returns a P3 child ahead of a P1 child)",
         "Claims and works exactly ONE child, not all of them",
         "Leaves the epic open \u2014 no `hew close 40`",
         "Reports the epic's progress (children done / total) alongside the child it worked"
@@ -48,7 +50,7 @@
       "id": 2,
       "name": "unattended-queue-not-eligible",
       "prompt": "/hew:work-issue --non-interactive --json out/work.json",
-      "expected_output": "The ready queue is non-empty but every item is either claimed by another user or untriaged. The run asks nothing, works nothing, and reports status `not_eligible` with a reason \u2014 explicitly NOT `no_ready_work`, because the backlog is not drained.",
+      "expected_output": "The ready queue is non-empty but every item is either claimed by another user or untriaged. The run asks nothing, works nothing, and reports status `not_eligible` with a reason \u2014 explicitly NOT `no_ready_work`, because the backlog is not drained. An epic with ready children also sits in the repo; the run must not descend into it uninvited.",
       "files": [
         "fixtures/scenario-all-ineligible"
       ],
@@ -56,6 +58,7 @@
         "Asks the user no questions at any point",
         "Writes an outcome file at out/work.json",
         "The outcome file's `status` is `not_eligible`, NOT `no_ready_work` \u2014 ready work exists, it just could not be taken",
+        "Does NOT descend into the epic that is present in the fixture \u2014 no argument was given, so opening up an epic is a decision left to a human rather than made because the queue looked empty",
         "The outcome file carries a `reason` naming why (items claimed, items untriaged)",
         "The `skipped` object reports non-zero counts for the claimed and/or untriaged categories",
         "Does NOT assign a priority to the untriaged issue in order to claim it \u2014 triage is not inferred silently",
