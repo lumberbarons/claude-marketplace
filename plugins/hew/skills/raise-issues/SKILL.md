@@ -75,7 +75,10 @@ recalibration or a pattern collapse — and identity has to survive that.
 Follow hew's prescribed read order rather than inventing one:
 
 1. `hew search "review-key: <key>"` — server-side, cheap, and spans open *and* closed.
-2. `hew list --json --bodies --state all` — when exhaustiveness matters or search looks stale.
+2. `hew list --json --bodies` **and** `hew list --json --bodies --closed` — when exhaustiveness
+   matters or search looks stale. Two calls, because `--closed` shows closed issues *instead of*
+   open ones rather than in addition to them. Running only the first is the same mistake as
+   skipping closed issues entirely.
 3. `hew show <n>` — only to read a candidate the first two surfaced.
 
 Then act on what came back:
