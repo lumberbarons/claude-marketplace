@@ -57,21 +57,45 @@ behalf.
 Selection has to be deterministic, because a loop that picks differently on each tick cannot be
 reasoned about from its logs.
 
-**No issue number:** take the first eligible entry from `hew ready`. Empty output means the
-backlog is genuinely drained — that is `no_ready_work`, a real result, and worth distinguishing
-from every other way of finishing with nothing.
+**No issue number:** take the first eligible entry from `hew ready`. That list is
+priority-sorted, so the first entry is the highest-priority ready item and ties break toward the
+oldest — walking down it *is* the selection rule. Do not re-rank by what looks quick, tractable,
+or interesting. An agent that picks its favourites leaves P1s rotting behind a comfortable run of
+P3s, and once that happens the priority label has stopped meaning anything to anyone who sets it.
+
+Skipping an ineligible entry (below) continues down the same order, so what you end up with is
+always the highest-priority item actually available to you.
+
+`hew ready` lists non-epic issues only, so this path never selects an epic — descending into one
+requires being asked for it by number. An epic's own ready children are ordinary issues and
+appear in the queue on their own merits, so nothing is missed by leaving the wrapper out.
+
+Empty output means the backlog is genuinely drained — that is `no_ready_work`, a real result, and
+worth distinguishing from every other way of finishing with nothing. Report it and stop; do not
+go looking for an epic to descend into because the queue looked disappointing. Choosing to open
+up an epic is a decision about what to work on next, and an empty queue is exactly the moment a
+human would want to make it rather than discover it was made for them.
 
 **An issue number:** `hew show <n> --json`. If `epic` is true, descend (below). If it is closed,
 say so and stop — reopening is a human decision.
 
-**Epic descent.** The primer's rule against working an epic directly leaves the question of what
-to do instead. `hew list --epic <n> --json` returns the children with `state`, `inProgress` and
-`openBlockers`; filter to `state: "open"` — unlike a bare `hew list`, the `--epic` form returns
-closed children too — and take the first with no open blockers. Prefer this over `hew epic
-status`, which renders progress but not blockers. Report the epic's progress, work exactly one
-child, and leave the epic open; the next invocation walks to the next child. If every child is
-closed, the epic is finished and a human should close it — say so rather than closing it
-yourself.
+**Epic descent — only when an epic was named explicitly.** This path is reachable from
+`/hew:work-issue <n>` where `n` is an epic, never from the no-argument path above. The primer's
+rule against working an epic directly leaves the question of what to do instead.
+`hew list --epic <n> --json` returns the children with `state`, `inProgress` and
+`openBlockers`. Filter to `state: "open"` — unlike a bare `hew list`, the `--epic` form returns
+closed children too — drop any with open blockers, then **sort what remains by priority
+yourself** and take the top one. Prefer this over `hew epic status`, which renders progress but
+not blockers.
+
+Sorting explicitly matters here in a way it does not above: `hew ready` is documented as
+priority-sorted so taking its first entry is enough, while `--epic` carries no such guarantee.
+Trusting its order would let an epic whose children were filed out of priority order get worked
+out of priority order, and nothing downstream would ever flag it.
+
+Report the epic's progress, work exactly one child, and leave the epic open; the next invocation
+walks to the next child. If every child is closed, the epic is finished and a human should close
+it — say so rather than closing it yourself.
 
 **Eligibility.** Skip and move to the next candidate when:
 
@@ -258,8 +282,10 @@ Discovered: #58 (filed, --discovered-from 42)
 ```
 
 Under `--all`, one block per issue, then a summary line with the counts and whatever stopped
-the run. Then re-resolve from Step 1; stop on the first `failed` outcome rather than continuing
-into work that may depend on it.
+the run. Then re-resolve from Step 1 rather than working down a list captured at the start —
+re-reading `hew ready` each time is what keeps the run on the highest-priority remaining work,
+including anything filed or re-prioritised while the previous issue was in flight. Stop on the
+first `failed` outcome rather than continuing into work that may depend on it.
 
 When `--json <path>` was given, also write the outcome file from [REFERENCE.md](REFERENCE.md).
 

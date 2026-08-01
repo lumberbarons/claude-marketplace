@@ -58,8 +58,8 @@ fail.
 | Scenario | Shape | What it isolates |
 |---|---|---|
 | `scenario-ready-bug` | One ready `bug` with a three-item Done-when | The happy path: claim → red → green → verify → PR |
-| `scenario-epic` | `#40` is an epic; children open, closed, and blocked | Descent, and the filters that pick the right child |
-| `scenario-all-ineligible` | Ready queue of one claimed and two untriaged issues | `not_eligible` vs `no_ready_work` — the distinction the loop rests on |
+| `scenario-epic` | `#40` is an epic; children open, closed, and blocked, with a P3 listed ahead of a P1 | Descent, the filters, and priority order the listing does not guarantee |
+| `scenario-all-ineligible` | Ready queue of one claimed and two untriaged issues, plus an epic with ready children | `not_eligible` vs `no_ready_work`, and not descending into an epic uninvited |
 | `scenario-no-done-when` | Issue with Where/Problem/Fix and an empty Done-when | Whether criteria get synthesized or the finish line gets guessed |
 | `scenario-gate-fails` | A test in the project fails for a reason outside the issue's scope | Push-but-no-PR, and leaving the claim in place |
 | `scenario-resume-own-claim` | Top of the queue is already claimed by the runner, with a partial branch | exit 5 as resume, not collision — the state `scenario-gate-fails` leaves behind |

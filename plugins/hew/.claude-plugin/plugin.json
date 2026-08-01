@@ -1,7 +1,7 @@
 {
   "name": "hew",
   "description": "Skills for tracking work in GitHub Issues via the hew CLI. Files review findings as deduplicated issues using a stable review key, and takes a tracked issue from claimed to draft PR test-first, driven by the issue's own acceptance checklist.",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": {
     "name": "lumberbarons"
   }
