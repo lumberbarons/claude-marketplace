@@ -16,12 +16,20 @@ So the fixture replaces the CLI rather than the repository.
 
 ## The hew stub
 
-`hew-stub/hew` is an executable placed ahead of the real binary on `PATH`. It serves canned
-responses for the scenario named by `$HEW_SCENARIO` and appends every invocation to
-`$HEW_LOG` — one command line per row.
+`hew-stub/hew` is an executable placed ahead of the real binary on `PATH`. It appends every
+invocation to `$HEW_LOG` — one command line per row — and serves reads from a small mutable
+JSON store seeded per scenario from `$HEW_SCENARIO`.
 
-That log is what most assertions actually read, because the interesting claims about this skill
-are claims about *protocol*, and protocol is a sequence of commands:
+**The store has to be stateful, not a table of canned responses.** Canned replay keys a response
+to a command, which means `start 42` followed by `show 42` needs the post-claim `show`
+pre-recorded, and any deviation in command order breaks the fixture. Command order is exactly
+what these evals assert on, so a stateless stub fights its own purpose. A store where `start`
+actually writes a claim, a second `start` returns exit 3 because the issue genuinely is claimed,
+and `show` reflects both, is robust to whatever order the skill chooses — which is the point,
+since the order is the thing under test.
+
+The log is what most assertions read, because the interesting claims about this skill are claims
+about *protocol*, and protocol is a sequence:
 
 - did `hew start` come before the first source edit, or after?
 - was there a test run between the branch and the implementation, and did it fail?
@@ -30,6 +38,15 @@ are claims about *protocol*, and protocol is a sequence of commands:
 
 None of those are visible in a final diff. All of them are visible in an ordered command log,
 and none of them require a network.
+
+**Known weakness, and the upstream fix.** This stub is a hand-maintained copy of hew's JSON
+schema. When `hew show --json` changes shape, the stub keeps serving the old one and these evals
+keep passing against a CLI that no longer exists — silently, until someone runs the real binary.
+That is the same drift these skills exist to catch, relocated into the test harness. The durable
+fix belongs in hew rather than here: [lumberbarons/hew#74](https://github.com/lumberbarons/hew/issues/74)
+proposes a local test backend behind the real command surface, where a contract test can assert
+both backends behave identically. Treat this stub as interim, and re-verify it against the real
+CLI whenever hew's output shape moves.
 
 ## Scenarios
 
