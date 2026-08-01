@@ -77,7 +77,7 @@ yourself.
 
 | Condition | Why, and what to report |
 |---|---|
-| `inProgress` and assigned to someone else | Another agent or human holds it. Taking it would collide. |
+| `inProgress` and assigned to someone else | Another agent or human holds it. Cheap to skip here, though the claim in Step 2 is the authority — this listing can be stale by the time you act on it. |
 | `untriaged` (no priority or no type) | The `--priority` the primer says `start` needs is a triage judgement, not a default. Interactively, ask. Unattended, skip and count it — a loop that assigns priorities to get past the prompt is inventing the very signal the queue sorts on. |
 | Open blockers | `hew ready` already excludes these; if one arrived via an explicit number, name the blockers and stop. |
 
@@ -93,12 +93,15 @@ Stop here under `--dry-run`, after showing the resolved target.
 hew start <n>
 ```
 
-Exit 3 here means someone claimed it between your read and your write — the lock working, not an
-error. Re-resolve from Step 1 rather than treating it as a failed run.
+The exit code is the whole answer, and it is authoritative in a way that reading `assignees`
+first is not — between a read and a claim there is a window for another agent to slip in, and
+the claim itself has no such gap:
 
-Resuming your own work is different from claiming — if `hew show <n> --json` already lists you
-in `assignees` with `inProgress` true, the issue is yours from an earlier run. Skip `hew start`
-and pick up where the branch left off.
+- **0** — yours. Proceed.
+- **3** — someone else took it. The lock working, not an error: re-resolve from Step 1 rather
+  than reporting a failed run.
+- **5** — the claim was already yours, from an earlier run that did not finish. Resume rather
+  than restart: check for a branch and commits from that attempt before redoing the work.
 
 ## Step 3 — Read the contract
 

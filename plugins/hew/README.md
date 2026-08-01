@@ -83,11 +83,10 @@ the two things that change constantly — line numbers and the model's phrasing 
 
 Severity is deliberately excluded: it moves between runs, and identity must not.
 
-Dedup then follows hew's own read order — `hew search` first, then `hew list --json --bodies`
-plus `hew list --json --bodies --closed` when exhaustiveness matters, and `hew show` only for a
-specific candidate — across open *and* closed issues. A closed-as-completed match means the
-pattern regressed and is filed fresh with `--discovered-from`; a closed-as-declined match is
-suppressed for good.
+Dedup then follows hew's own read order — `hew search` first, `hew list --json --bodies --state
+all` when exhaustiveness matters, `hew show` only for a specific candidate — across open *and*
+closed issues. A closed-as-completed match means the pattern regressed and is filed fresh with
+`--discovered-from`; a closed-as-declined match is suppressed for good.
 
 ## Running unattended
 

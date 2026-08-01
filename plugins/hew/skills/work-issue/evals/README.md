@@ -24,9 +24,9 @@ JSON store seeded per scenario from `$HEW_SCENARIO`.
 to a command, which means `start 42` followed by `show 42` needs the post-claim `show`
 pre-recorded, and any deviation in command order breaks the fixture. Command order is exactly
 what these evals assert on, so a stateless stub fights its own purpose. A store where `start`
-actually writes a claim, a second `start` returns exit 3 because the issue genuinely is claimed,
-and `show` reflects both, is robust to whatever order the skill chooses — which is the point,
-since the order is the thing under test.
+actually writes a claim, a later `start` reports that claim back — exit 3 when another user holds
+it, exit 5 when it is the runner's own — and `show` reflects both, is robust to whatever order
+the skill chooses, which is the point, since the order is the thing under test.
 
 The log is what most assertions read, because the interesting claims about this skill are claims
 about *protocol*, and protocol is a sequence:
@@ -62,6 +62,7 @@ fail.
 | `scenario-all-ineligible` | Ready queue of one claimed and two untriaged issues | `not_eligible` vs `no_ready_work` — the distinction the loop rests on |
 | `scenario-no-done-when` | Issue with Where/Problem/Fix and an empty Done-when | Whether criteria get synthesized or the finish line gets guessed |
 | `scenario-gate-fails` | A test in the project fails for a reason outside the issue's scope | Push-but-no-PR, and leaving the claim in place |
+| `scenario-resume-own-claim` | Top of the queue is already claimed by the runner, with a partial branch | exit 5 as resume, not collision — the state `scenario-gate-fails` leaves behind |
 
 `scenario-gate-fails` is the one worth building carefully. The failure has to be genuinely
 outside `### Where`, or a capable model will simply fix it and pass the eval for the wrong
@@ -71,5 +72,6 @@ reason — the behaviour under test is restraint plus an honest report, not repa
 
 | Code | Condition | Why it matters here |
 |---|---|---|
-| 3 | `start` on a claimed issue | The concurrency lock. The skill must treat it as "move on", never as an error to force past. |
+| 3 | `start` on an issue claimed by someone else | The concurrency lock. The skill must treat it as "move on", never as an error to force past. |
+| 5 | `start` on an issue already claimed by the runner | A resume, not a collision. Conflating it with 3 makes an interrupted run unresumable — it would skip its own unfinished work forever. |
 | 4 | any command, unauthenticated | Must surface as `error`, not as an empty backlog. |

@@ -99,6 +99,23 @@
         "Does NOT expand scope beyond the issue's `### Where` in an attempt to make the gate pass",
         "Does NOT retry the same failing change repeatedly"
       ]
+    },
+    {
+      "id": 5,
+      "name": "resume-own-claim-exit-5",
+      "prompt": "work the next issue",
+      "expected_output": "The top of `hew ready` is an issue this runner already claimed in an earlier run that did not finish \u2014 `hew start` returns exit 5. The skill resumes that work rather than skipping it as a collision or redoing it from scratch, and looks for the earlier attempt's branch and commits first.",
+      "files": [
+        "fixtures/scenario-resume-own-claim"
+      ],
+      "assertions": [
+        "Distinguishes exit 5 from exit 3 \u2014 treats it as a resume, not as an issue held by someone else",
+        "Does NOT skip the issue and move to the next candidate, which is the exit-3 behaviour and would strand the run's own unfinished work permanently",
+        "Does NOT use `hew start --force`, which is unnecessary when the claim is already the runner's",
+        "Looks for the earlier attempt's branch and commits before writing code, rather than starting the implementation over",
+        "Does not duplicate commits or re-apply changes the earlier attempt already landed on that branch",
+        "Completes the issue and opens the PR as normal, or reports `failed` again if it still cannot verify"
+      ]
     }
   ]
 }
