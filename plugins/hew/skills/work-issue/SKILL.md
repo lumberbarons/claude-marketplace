@@ -122,14 +122,30 @@ do not understand well enough to implement — surface that instead of guessing.
 
 ## Step 4 — Branch
 
-Branch from the default branch, freshly, so this issue's PR contains only this issue's work.
-Under `--all`, return to the default branch between issues rather than stacking — otherwise the
-second PR carries the first one's commits and neither can be reviewed alone.
+The name is the part that matters, because two things downstream read it: `hew pr` infers which
+claimed issue the PR is for from the number in it, and warns when the prefix disagrees with the
+issue type. Use `<prefix>/<n>-<slug>` — `bug` → `fix/`, `enhancement` → `feat/`, `task` →
+`chore/`.
 
-Name it `<prefix>/<n>-<slug>`, prefix from the issue type: `bug` → `fix/`, `enhancement` →
-`feat/`, `task` → `chore/`. This matches the conventional-commit prefix `hew pr` derives from
-the same type, and the number in the branch is what lets `hew pr` infer the issue without being
-told.
+Where the branch comes from depends on how the session started:
+
+- **Already isolated** — a Claude Code agent worktree puts you on a branch it named itself,
+  shaped like `worktree-feat+some-task`: no issue number, no conventional prefix, so it satisfies
+  neither reader above. Do not rename it; the harness tracks that branch for its own cleanup.
+  Push to a well-named upstream instead, and let the names differ:
+
+  ```bash
+  git push -u origin HEAD:fix/42-write-commands-guard-closed
+  ```
+
+  `hew pr` resolves the PR head from the upstream ref, so the well-named branch is what reaches
+  GitHub, the prefix check, and the reviewer.
+
+- **Not isolated** — branch from the default branch yourself, so the PR carries this issue only.
+
+Under `--all`, reset to the default branch between issues (`git checkout -B <next> origin/<default>`)
+and push each to its own remote branch. One worktree is one local branch, so draining a queue
+without resetting stacks three issues into a single PR that no one can review a piece of.
 
 ## Step 5 — Implement, test-first
 
@@ -210,7 +226,7 @@ stopped moving.
 Commit, push, and let hew compose the PR from what the tracker already knows:
 
 ```bash
-git push -u origin <branch>
+git push -u origin HEAD:<prefix>/<n>-<slug>
 hew pr --testing "<how you verified it — the gate you ran, the tests you added>"
 ```
 

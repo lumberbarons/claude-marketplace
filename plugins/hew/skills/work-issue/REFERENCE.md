@@ -71,7 +71,9 @@ target or a CI workflow naming the real command is better evidence than a langua
 ## Branch and commit conventions
 
 Branch: `<prefix>/<n>-<slug>`, where the slug is the issue title lowercased and hyphenated,
-truncated to something readable.
+truncated to something readable. In an agent worktree this is the **upstream** name — the local
+branch keeps whatever the harness called it, and `git push -u origin HEAD:<prefix>/<n>-<slug>`
+is what reconciles the two.
 
 | Issue type | Branch prefix | Commit prefix | `hew pr` title default |
 |---|---|---|---|
@@ -80,7 +82,10 @@ truncated to something readable.
 | `task` | `chore/` | `chore:` | `chore: <title>` |
 
 The issue number in the branch is load-bearing: `hew pr` uses it to break ties when inferring
-which claimed issue the PR is for.
+which claimed issue the PR is for, and it checks the prefix against the issue type. Both read
+the name `hew` resolves from the upstream ref, not the local one — which is the whole reason a
+worktree's auto-generated local name (`worktree-feat+something`, carrying neither a number nor a
+prefix) does not have to be fought.
 
 Commit body explains why the change is what it is, then:
 
@@ -136,7 +141,7 @@ includes `internal/cli/write.go` as `### Where` promised, and `go build ./... &&
 passes.
 
 ```bash
-$ git push -u origin feat/39-write-commands-guard-closed
+$ git push -u origin HEAD:feat/39-write-commands-guard-closed
 $ hew pr --testing "3 new tests in internal/cli/write_test.go covering refusal, override, and re-close; go test ./... passes"
 opened draft PR #63 → Fixes #39
 ```
