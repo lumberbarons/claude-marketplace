@@ -1,0 +1,121 @@
+{
+  "skill_name": "work-issue",
+  "baseline": "no skill at all \u2014 the model has the hew SessionStart primer and the CLI, but no prescribed workflow",
+  "harness_note": "Every eval needs a repo whose `hew` resolves to the stub in ../../work-issue-workspace/fixtures/hew-stub \u2014 a small mutable JSON store per scenario, plus a command log the assertions read. The store is stateful rather than a table of canned responses: these evals assert on command *order*, and a stateless stub breaks whenever the skill deviates from a pre-recorded sequence. That log is what makes protocol adherence \u2014 start before edit, pr not close, exit 3 handled \u2014 checkable without creating real GitHub issues or PRs. The stub is interim; lumberbarons/hew#74 tracks the durable fix. See evals/README.md.",
+  "evals": [
+    {
+      "id": 0,
+      "name": "next-ready-bug-tdd-to-pr",
+      "prompt": "work the next issue",
+      "expected_output": "Selects the top of `hew ready`, claims it with `hew start`, branches fix/<n>-<slug>, writes failing tests from the issue's Done-when checklist before implementing, verifies all three checks, pushes, and opens the PR with `hew pr --testing`. Never calls `hew close`.",
+      "files": [
+        "fixtures/scenario-ready-bug"
+      ],
+      "assertions": [
+        "Calls `hew ready` to select the target rather than `hew list` or picking an issue by judgement",
+        "Calls `hew start <n>` before making any file edit \u2014 the claim precedes the work, so a parallel agent cannot take the same issue",
+        "Creates a branch named with the `fix/` prefix (the issue is type bug) and containing the issue number",
+        "Writes test(s) and runs them to observe a failure BEFORE writing the implementation \u2014 the command log shows a test run between the branch creation and the first source edit",
+        "The failing test run is reported as failing for the right reason (absent behaviour), not a compile or import error",
+        "Each `### Done when` checklist item is addressed explicitly in the final report, with a verified count",
+        "Runs the repo's quality gate (the language-appropriate build/test command) before pushing",
+        "Checks that the diff touches every file named in the issue's `### Where` section",
+        "Calls `hew pr` with a `--testing` argument describing how the change was verified",
+        "Does NOT call `hew close` at any point \u2014 the merge closes the issue, not the agent",
+        "Commit message uses a conventional prefix matching the branch, and does not contain a second `Fixes #n` closing keyword"
+      ]
+    },
+    {
+      "id": 1,
+      "name": "epic-descends-to-child",
+      "prompt": "work issue 40",
+      "expected_output": "Recognises #40 as an epic, does not implement it directly, lists its children, selects the first open child with no open blockers, and works exactly that one child. Leaves the epic open and reports its progress.",
+      "files": [
+        "fixtures/scenario-epic"
+      ],
+      "assertions": [
+        "Identifies #40 as an epic from `hew show 40 --json` (`epic: true`) rather than treating it as ordinary work",
+        "Does NOT call `hew start 40` \u2014 epics are never claimed or worked directly",
+        "Lists the epic's children (`hew list --epic 40 --json` or equivalent) to find candidates",
+        "Filters out children whose `state` is `closed`, which the --epic listing includes",
+        "Filters out children with a non-empty `openBlockers` array",
+        "Claims and works exactly ONE child, not all of them",
+        "Leaves the epic open \u2014 no `hew close 40`",
+        "Reports the epic's progress (children done / total) alongside the child it worked"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "unattended-queue-not-eligible",
+      "prompt": "/hew:work-issue --non-interactive --json out/work.json",
+      "expected_output": "The ready queue is non-empty but every item is either claimed by another user or untriaged. The run asks nothing, works nothing, and reports status `not_eligible` with a reason \u2014 explicitly NOT `no_ready_work`, because the backlog is not drained.",
+      "files": [
+        "fixtures/scenario-all-ineligible"
+      ],
+      "assertions": [
+        "Asks the user no questions at any point",
+        "Writes an outcome file at out/work.json",
+        "The outcome file's `status` is `not_eligible`, NOT `no_ready_work` \u2014 ready work exists, it just could not be taken",
+        "The outcome file carries a `reason` naming why (items claimed, items untriaged)",
+        "The `skipped` object reports non-zero counts for the claimed and/or untriaged categories",
+        "Does NOT assign a priority to the untriaged issue in order to claim it \u2014 triage is not inferred silently",
+        "Does NOT use `hew start --force` to take an issue claimed by someone else",
+        "The `issues` array is empty and no PR is opened",
+        "The prose report also distinguishes 'could not take any' from 'nothing to do'"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "missing-done-when-synthesized",
+      "prompt": "implement issue 12 please",
+      "expected_output": "Issue #12 has Where/Problem/Fix but an empty `### Done when`. The skill derives verifiable acceptance criteria from the Fix and Where, shows them before writing code, and then uses them as the test contract \u2014 rather than implementing to a vague finish line.",
+      "files": [
+        "fixtures/scenario-no-done-when"
+      ],
+      "assertions": [
+        "Notices that `### Done when` is absent or empty rather than proceeding as if the contract were present",
+        "States the synthesized acceptance criteria explicitly to the user BEFORE the first source edit",
+        "Each synthesized criterion is verifiable by running a command or reading the diff \u2014 not a restatement of intent like 'the parsing is cleaned up'",
+        "The synthesized criteria are derived from the issue's `### Fix` and `### Where`, referencing the actual functions or files named there",
+        "Behavioural criteria become failing tests before implementation; structural criteria become diff checks (grep/build) rather than tests",
+        "The final verification walks the synthesized list item by item"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "verification-failure-no-pr",
+      "prompt": "/hew:work-issue --non-interactive --json out/work.json",
+      "expected_output": "The issue is claimed and implemented, but the repo's test gate fails in a way that cannot be fixed inside the issue's scope. The branch is pushed so the work survives and is inspectable, no PR is opened, and the issue stays claimed so the next loop tick skips past it instead of retrying forever.",
+      "files": [
+        "fixtures/scenario-gate-fails"
+      ],
+      "assertions": [
+        "Runs the quality gate and detects the failure rather than pushing past it",
+        "Does NOT call `hew pr` \u2014 a change that does not verify is not delivered for review",
+        "Pushes the branch anyway, so the partial work is not lost",
+        "Does NOT close, unassign, or otherwise release the issue \u2014 it stays claimed",
+        "The outcome file's `status` is `failed`, and the issue entry's `pr` field is null",
+        "The report names what failed, with the gate output, rather than reporting success or staying silent",
+        "Does NOT expand scope beyond the issue's `### Where` in an attempt to make the gate pass",
+        "Does NOT retry the same failing change repeatedly"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "resume-own-claim-exit-5",
+      "prompt": "work the next issue",
+      "expected_output": "The top of `hew ready` is an issue this runner already claimed in an earlier run that did not finish \u2014 `hew start` returns exit 5. The skill resumes that work rather than skipping it as a collision or redoing it from scratch, and looks for the earlier attempt's branch and commits first.",
+      "files": [
+        "fixtures/scenario-resume-own-claim"
+      ],
+      "assertions": [
+        "Distinguishes exit 5 from exit 3 \u2014 treats it as a resume, not as an issue held by someone else",
+        "Does NOT skip the issue and move to the next candidate, which is the exit-3 behaviour and would strand the run's own unfinished work permanently",
+        "Does NOT use `hew start --force`, which is unnecessary when the claim is already the runner's",
+        "Looks for the earlier attempt's branch and commits before writing code, rather than starting the implementation over",
+        "Does not duplicate commits or re-apply changes the earlier attempt already landed on that branch",
+        "Completes the issue and opens the PR as normal, or reports `failed` again if it still cannot verify"
+      ]
+    }
+  ]
+}

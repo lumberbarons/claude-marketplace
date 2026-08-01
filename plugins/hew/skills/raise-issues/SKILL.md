@@ -72,11 +72,14 @@ recalibration or a pattern collapse — and identity has to survive that.
 
 ## Step 3 — Deduplicate
 
-Follow hew's prescribed read order rather than inventing one:
+Follow the read order the primer prescribes rather than inventing one — `hew search` first, then
+`hew list --json --bodies --state all` when exhaustiveness matters, and `hew show <n>` only to
+read a candidate those surfaced. Search on the key itself: `hew search "review-key: <key>"`.
 
-1. `hew search "review-key: <key>"` — server-side, cheap, and spans open *and* closed.
-2. `hew list --json --bodies --state all` — when exhaustiveness matters or search looks stale.
-3. `hew show <n>` — only to read a candidate the first two surfaced.
+The part to hold on to is `--state all`. Every step of that order spans closed issues as well as
+open ones, and that is load-bearing rather than incidental: a dedup pass reading only open issues
+re-files every finding the moment its fix merges, which is the failure this whole scheme exists
+to prevent.
 
 Then act on what came back:
 
@@ -86,9 +89,6 @@ Then act on what came back:
 | Closed as completed, same key | The pattern came back. File a new issue with `--discovered-from <n>` — this is a regression, and it is the most valuable thing the key buys you. |
 | Closed as not-planned or duplicate | Suppress permanently. Re-filing something a human explicitly declined is the fastest way to get this pipeline muted. |
 | No key match | Before filing, check the open review issues for the same problem under a different slug, and reuse the existing issue if you find one. This is the backstop for vocabulary drift. |
-
-Searching closed issues is not optional. A dedup pass that only reads open issues re-files every
-finding the moment its fix merges.
 
 ## Step 4 — Map onto hew fields
 
@@ -103,6 +103,20 @@ finding the moment its fix merges.
 
 The key lives in `where` because hew renders bodies as-is, which keeps it greppable by both
 `hew search` and `hew list --bodies` without needing a field the tracker does not have.
+
+**Write code-shaped text as code spans.** Paths, symbols, flags, commands, and error strings all
+go in backticks — `` `internal/http/middleware/logging.go:13` ``, `` `r.Header` ``,
+`` `fmt.Errorf("...: %w", err)` ``. Wrap the whole command rather than the flag inside it. hew
+checks composed bodies and warns about unmarked code text, but the reason is not the warning:
+review findings are made almost entirely of these strings, and an issue body is the one artifact
+here written for a human in a browser rather than an agent in a terminal. Rendered as
+proportional prose, the characters carrying the meaning — slashes, dots, double dashes — are
+exactly the ones that dissolve into the sentence around them.
+
+**The `review-key:` line is the exception — leave it bare.** It is an identity token that
+`hew search` matches as a substring, not prose anyone reads, and its format is load-bearing:
+re-rendering it orphans every issue already filed under the old spelling. Accept the warning on
+that line.
 
 ## Step 5 — Write a plan, then apply it
 
