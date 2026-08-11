@@ -37,7 +37,8 @@ fixes it.
 /hew:raise-issues only P1 and P2
 
 /hew:work-issue 42                      # a specific issue, or an epic to descend into
-/hew:work-issue --all                   # drain the ready queue
+/hew:work-issue --batch                 # up to 3 issues, then verify them together
+/hew:work-issue --batch 5               # a higher ceiling; sizing may still stop sooner
 /hew:work-issue --dry-run
 ```
 
@@ -63,6 +64,24 @@ unit test asserting the absence of a pattern is theatre.
 
 Epics are trees, not work — given one, the skill descends to the next ready child, works exactly
 that, and leaves the epic open for the next run.
+
+## Working several at once
+
+`--batch` works up to three issues in one run — each on its own branch, each its own PR — and
+then merges them onto a throwaway branch and runs the quality gate over the combination.
+
+That last step is the reason the mode exists. Every issue is branched from the default branch and
+gated against it alone, so until the batch is assembled no tree has held two of the fixes at once.
+Git catches the overlapping case by itself; what it waves through is two changes in different
+files whose behaviours disagree — both branches green, both merging cleanly, the default branch
+broken once they land. The integration branch is never pushed and never becomes a PR: it is a
+check, and a failing one means two issues filed as independent are coupled, which gets filed as
+its own issue rather than patched into either PR.
+
+The ceiling is set before anything is claimed, sized from what the tracker already carries — the
+paths in `### Where` and the items in `### Done when`, which are what the run actually spends
+context on. An unbounded drain has no equivalent, on purpose: context fills silently, and the
+first casualty is the combined verification at the end of the run.
 
 ## The review key
 
@@ -105,11 +124,14 @@ Both skills are built to survive a scheduled loop.
 
 - `--non-interactive` removes every question; `--json <path>` writes a machine-readable outcome
 - one issue per invocation by default, so each tick costs one reviewable PR rather than ten
+- `--batch` raises that to a bounded few, sized before anything is claimed — there is no
+  unbounded mode, because the combined verification is what an overlong run loses first
 - `hew start`'s exit 3 keeps parallel runs off each other's work without any coordination
 - a run that cannot verify its change pushes the branch, opens no PR, and leaves the issue
   claimed — so the next tick moves on instead of retrying a broken change forever
 - `status` separates the four ways to finish with zero PRs: `no_ready_work` (drained),
-  `not_eligible` (something else holds the queue), `failed`, and `error`
+  `not_eligible` (something else holds the queue), `failed`, and `error` — plus
+  `integration_failed`, the one failure that leaves sound PRs behind and must not be retried
 
 The whole pipeline runs unattended end to end:
 

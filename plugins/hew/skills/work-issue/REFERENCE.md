@@ -6,12 +6,19 @@ Outcome file, quality gates, branch and commit conventions, and a worked example
 ## Outcome file
 
 What `--json <path>` writes. One object per invocation; `issues` holds one entry per issue the
-run touched, which is a single entry unless `--all` was given.
+run touched, which is a single entry unless `--batch` was given.
 
 ```json
 {
   "skill": "work-issue",
   "status": "delivered",
+  "batch": { "ceiling": 3, "delivered": 3, "remaining": 7 },
+  "integration": {
+    "branch": "integration/batch-42-51",
+    "merged": ["fix/42-write-commands-guard-closed", "fix/47-...", "fix/51-..."],
+    "gate": "go build ./... && go test ./... — passed",
+    "result": "passed"
+  },
   "issues": [
     {
       "number": 42,
@@ -33,8 +40,10 @@ run touched, which is a single entry unless `--all` was given.
 
 | Field | Notes |
 |---|---|
-| `status` | Run-level: `delivered`, `failed`, `no_ready_work`, `not_eligible`, or `error`. Under `--all`, `delivered` if any issue was delivered and none failed. |
-| `reason` | **Required when `status` is not `delivered`.** The stderr message, or which eligibility rule emptied the queue. |
+| `status` | Run-level: `delivered`, `integration_failed`, `failed`, `no_ready_work`, `not_eligible`, or `error`. Under `--batch`, `delivered` if every issue taken was delivered and Step 8 passed. |
+| `reason` | **Required when `status` is not `delivered`.** The stderr message, which eligibility rule emptied the queue, or the specific pair Step 8 caught. |
+| `batch` | Present only under `--batch`. `ceiling` is what sizing allowed, which may be below the requested `n`; `remaining` is the ready count left afterwards. `delivered` short of `ceiling` with `remaining: 0` is a drained queue, not a truncated run. |
+| `integration` | Present only when two or more issues were delivered. `result` is `passed`, `failed`, or `conflict` — `conflict` meaning the branches would not even merge. The branch is local and unpushed; it never becomes a PR. |
 | `issues` | Empty array when nothing was worked. |
 | `outcome` | Per issue: `delivered` or `failed`. |
 | `pr` | The PR number, or `null` on a `failed` issue — a failed issue has a pushed branch and no PR. |
@@ -45,6 +54,10 @@ run touched, which is a single entry unless `--all` was given.
 `status` exists because four different situations produce zero PRs and mean opposite things.
 See the table in SKILL.md; the failure mode it guards against is a scheduled run reporting a
 finished backlog when the CLI has actually been unauthenticated for a week.
+
+`integration_failed` is the one status that carries open PRs, so a caller must not treat it as a
+run to retry. Nothing about re-running changes the result — two issues filed as independent are
+coupled, and only a human reading the pair resolves that.
 
 ## Quality gates
 
@@ -67,6 +80,10 @@ run every gate that applies — a change touching Go and Terraform runs both.
 
 Prefer whatever the repo actually runs in CI over this table when the two disagree; a Makefile
 target or a CI workflow naming the real command is better evidence than a language guess.
+
+Step 8 runs the same table against the *union* of the files the batch changed, which can pull in
+a gate no single issue triggered — three Go-only fixes plus one touching Terraform means the
+integration pass runs both.
 
 ## Branch and commit conventions
 
@@ -163,3 +180,36 @@ Not an error condition — the lock did its job. Move to the next candidate. Wit
 ready, the run reports `not_eligible` with `skipped.claimed: 1`, rather than `no_ready_work`.
 The distinction matters: one says the backlog is finished, the other says something else is
 holding it, and only one of them should make anyone comfortable.
+
+### A batch of three
+
+`/hew:work-issue --batch` against a queue of ten. Sizing the first three candidates: #42 names
+two paths and three Done-when items, #47 one path and two items, #51 two paths and four items.
+None is large, so the ceiling stays at 3.
+
+Each is worked exactly as above — branched from `origin/main`, gated alone, pushed, PR opened.
+Then Step 8:
+
+```bash
+$ git checkout -B integration/batch-42-51 origin/main
+$ git merge --no-ff fix/42-write-commands-guard-closed
+$ git merge --no-ff fix/47-close-reports-state
+$ git merge --no-ff fix/51-start-honours-priority
+
+$ go build ./... && go test ./...
+--- FAIL: TestStart_UntriagedRequiresPriority
+```
+
+Nothing conflicted — the three fixes touch different files. #51 made `start` read priority before
+claiming; #42 made the write path refuse closed issues *before* any read. Each is correct against
+its own `### Done when`, and the order they compose in is not something either issue specified.
+
+The three PRs stay open. The coupling is filed fresh:
+
+```bash
+$ hew create --type bug --title "start on a closed issue fails before the priority check" \
+    --discovered-from 42 --discovered-from 51 --priority P2 ...
+```
+
+Status is `integration_failed`, `reason` names the pair and the failing test. Not `failed` — all
+three issues were delivered, and re-running the batch would reproduce this exactly.

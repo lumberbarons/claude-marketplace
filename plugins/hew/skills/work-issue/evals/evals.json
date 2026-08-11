@@ -119,6 +119,65 @@
         "Does not duplicate commits or re-apply changes the earlier attempt already landed on that branch",
         "Completes the issue and opens the PR as normal, or reports `failed` again if it still cannot verify"
       ]
+    },
+    {
+      "id": 6,
+      "name": "batch-three-integration-passes",
+      "prompt": "/hew:work-issue --batch --non-interactive --json out/work.json",
+      "expected_output": "Three small ready bugs. The run sizes candidates before claiming anything, works exactly three on three independent branches, opens three PRs, then merges all three onto a throwaway integration branch and runs the quality gate over the combination. The integration branch is never pushed and never becomes a PR.",
+      "files": [
+        "fixtures/scenario-batch-independent"
+      ],
+      "assertions": [
+        "Sizes candidates BEFORE claiming \u2014 `hew show` calls for the planned candidates appear in the command log ahead of the first `hew start`",
+        "Claims and works exactly three issues, not the whole ready queue",
+        "Each issue is branched from the default branch rather than from the previous issue's branch, so no PR contains another issue's commits",
+        "Re-reads `hew ready` between issues rather than working down the list captured during sizing",
+        "After the last `hew pr`, creates an integration branch and merges all three delivered branches into it",
+        "Merges the branches one at a time rather than as a single multi-head merge, so a conflict would name the branch that caused it",
+        "Runs the quality gate on the integration branch, covering the union of the files the three issues changed",
+        "Does NOT push the integration branch and does NOT open a PR from it \u2014 it is a check, not a deliverable",
+        "The outcome file's `status` is `delivered` and `integration.result` is `passed`",
+        "`batch.remaining` reports the ready issues still left, so the caller can tell a ceiling stop from a drained queue"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "batch-integration-catches-coupling",
+      "prompt": "/hew:work-issue --batch --non-interactive --json out/work.json",
+      "expected_output": "Each issue passes its own gate on its own branch and opens a PR, but two of the fixes contradict each other and the suite fails once merged together. The run reports `integration_failed`, leaves all PRs open, and files the coupling as its own issue instead of patching either PR.",
+      "files": [
+        "fixtures/scenario-batch-coupled"
+      ],
+      "assertions": [
+        "Every issue verifies individually and opens its own PR \u2014 the coupling is invisible until the batch is assembled",
+        "The integration gate fails, and the run detects it rather than reporting the batch as clean",
+        "The outcome file's `status` is `integration_failed`, NOT `failed` \u2014 every issue was delivered and every PR is sound",
+        "Does NOT close the PRs, release the claims, or revert any delivered branch",
+        "Names the specific pair of issues and the failing test, rather than reporting that 'the batch failed'",
+        "Files a new issue for the coupling with `--discovered-from` naming both issues involved",
+        "Runs the primer's dedup sequence before filing that issue rather than creating it blind",
+        "Does NOT amend either issue's branch to fix the coupling \u2014 the fix is bounded by neither issue's `### Where`",
+        "Does NOT re-run the batch or retry the merge, which would reproduce the same result"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "batch-large-issue-works-alone",
+      "prompt": "/hew:work-issue --batch",
+      "expected_output": "The top of the queue names six paths in `### Where` and carries seven `### Done when` items. The size rule makes it the whole batch: it is worked alone and the run stops, even though the ceiling allowed three and more ready work exists.",
+      "files": [
+        "fixtures/scenario-batch-large-issue"
+      ],
+      "assertions": [
+        "Sizes the candidate from its `### Where` path count and `### Done when` item count before claiming it",
+        "Identifies it as large against the stated rule rather than by an unexplained judgement call",
+        "Works exactly ONE issue and stops, despite `--batch` defaulting to a ceiling of three",
+        "Does NOT claim a second issue to fill the remaining ceiling",
+        "Runs no integration pass \u2014 fewer than two issues were delivered, so there is nothing to combine",
+        "The outcome file carries no `integration` object",
+        "The report attributes the stop to the size rule, not to an empty or ineligible queue"
+      ]
     }
   ]
 }
