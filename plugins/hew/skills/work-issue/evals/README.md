@@ -63,10 +63,21 @@ fail.
 | `scenario-no-done-when` | Issue with Where/Problem/Fix and an empty Done-when | Whether criteria get synthesized or the finish line gets guessed |
 | `scenario-gate-fails` | A test in the project fails for a reason outside the issue's scope | Push-but-no-PR, and leaving the claim in place |
 | `scenario-resume-own-claim` | Top of the queue is already claimed by the runner, with a partial branch | exit 5 as resume, not collision — the state `scenario-gate-fails` leaves behind |
+| `scenario-batch-independent` | Three small ready bugs whose fixes genuinely do not interact, with more ready work behind them | Sizing before claiming, three independent branches, a passing integration pass, a truthful `remaining` |
+| `scenario-batch-coupled` | Three ready bugs, two of which change behaviours that contradict each other — in different files | `integration_failed`, and filing the coupling instead of patching a PR |
+| `scenario-batch-large-issue` | Top of the queue names six paths in `### Where` and seven `### Done when` items | The size rule lowering the ceiling to one |
 
 `scenario-gate-fails` is the one worth building carefully. The failure has to be genuinely
 outside `### Where`, or a capable model will simply fix it and pass the eval for the wrong
 reason — the behaviour under test is restraint plus an honest report, not repair.
+
+`scenario-batch-coupled` needs the same care, for the mirror-image reason. **The two fixes must
+not touch the same lines.** If they do, git reports a merge conflict and the eval scores the
+skill on conflict handling — which git already solves — rather than on the case that motivates
+the whole integration pass: two changes that merge perfectly and disagree at runtime. One issue
+changing what a caller expects while another changes the callee's contract, in separate files,
+is the shape to build. The suite must pass on each branch alone and fail only once both are
+merged, or the scenario proves nothing.
 
 ## Exit codes the stub must reproduce
 

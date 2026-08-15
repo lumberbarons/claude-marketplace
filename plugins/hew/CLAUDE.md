@@ -17,3 +17,8 @@ issue already filed under the old one, so treat it as a migration, not an edit.
 skips review and records the opposite of what happened. And `hew start`'s exit 3 on a claimed
 issue is the concurrency lock that makes unattended runs safe; anything that routes around it
 with `--force` removes the only thing keeping two agents off the same issue.
+
+`--batch`'s integration branch is a check, not a deliverable — never pushed, never a PR. Making
+one from it would rebuild the single unreviewable PR that per-issue branching exists to prevent,
+and the batch's own PRs already carry the `Fixes #n` lines that close the work. Its failure state,
+`integration_failed`, is likewise not a retry: the PRs are sound and re-running reproduces it.

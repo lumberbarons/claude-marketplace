@@ -1,6 +1,6 @@
 ---
 name: work-issue
-description: Take a hew-tracked GitHub issue from claimed to draft PR, test-first — select from `hew ready`, claim it, branch, drive the issue's own "Done when" checklist as tests, verify, push, and open the PR with `hew pr`. Use whenever the user wants a tracked issue worked, fixed, implemented, or delivered: "work the next issue", "fix #42", "implement that bug", "pick up the next ready item", "what's ready — go do it", "drain the backlog". Use it after /hew:raise-issues files findings, and inside any scheduled or looping agent that works a hew backlog unattended. Handles bug, task, and enhancement issues; given an epic it descends to the next ready child rather than working the epic directly.
+description: Take a hew-tracked GitHub issue from claimed to draft PR, test-first — select from `hew ready`, claim it, branch, drive the issue's own "Done when" checklist as tests, verify, push, and open the PR with `hew pr`. Use whenever the user wants a tracked issue worked, fixed, implemented, or delivered: "work the next issue", "fix #42", "implement that bug", "pick up the next ready item", "what's ready — go do it", "fix a few bugs", "drain the backlog". Use it after /hew:raise-issues files findings, and inside any scheduled or looping agent that works a hew backlog unattended. Handles bug, task, and enhancement issues; `--batch` works several in one run and verifies them together; given an epic it descends to the next ready child rather than working the epic directly.
 ---
 
 # Work Issue
@@ -34,7 +34,8 @@ delete the only coordination the loop has.
 target.
 
 - **`<n>`** — work issue `n`. If it is an epic, descend to its next ready child.
-- **`--all`** — keep going until no ready work remains, instead of stopping after one issue.
+- **`--batch [n]`** — work up to `n` issues in one run, then verify them together. `n` defaults
+  to 3; the size rule in Step 1 can lower it but never raises it.
 - **`--non-interactive`** — ask nothing. Where this skill would prompt, report the outcome and
   stop.
 - **`--json <path>`** — additionally write the outcome file described in
@@ -97,6 +98,12 @@ Report the epic's progress, work exactly one child, and leave the epic open; the
 walks to the next child. If every child is closed, the epic is finished and a human should close
 it — say so rather than closing it yourself.
 
+`--batch` does not change that, and the reason is worth stating so nobody expects otherwise: a
+child's blockers clear when its PR *merges*, not when this run pushes it. In a dependency chain
+the second child is therefore still blocked for the entire run, and a batch aimed at an epic would
+work one child and then correctly find nothing eligible. Children with no dependency between them
+are ordinary ready issues and reach a batch through `hew ready` on their own merits.
+
 **Eligibility.** Skip and move to the next candidate when:
 
 | Condition | Why, and what to report |
@@ -109,7 +116,39 @@ If ready work exists but none of it is eligible, that is **not** an empty backlo
 `not_eligible` and name the reason — a run that reports "nothing to do" while three issues sit
 claimed by a crashed agent reads as a drained queue and hides the stall indefinitely.
 
-Stop here under `--dry-run`, after showing the resolved target.
+**Sizing the batch.** Under `--batch`, decide the whole batch here, before claiming anything.
+Take the first `n` eligible candidates in queue order, `hew show` each, and size it from the
+body:
+
+> An issue whose `### Where` names more than three paths, or whose `### Done when` carries more
+> than five items, is large. Work it alone and stop — it is the batch.
+
+The bound has to be set in advance because the skill cannot measure its own remaining context.
+There is no readout it can consult, and Claude Code compacts rather than failing, so a run that
+takes on too much does not error — it quietly loses detail. What it loses first is the end of
+the run, which is exactly where the integration pass lives. A combined verification performed
+against a compacted context is worse than none, because it reports a check nobody actually made.
+
+So size from what the tracker already carries. `### Where` counts the files that will be read
+and `### Done when` counts the tests that will be written and run; those are the two things that
+actually spend the run. Counting them is deterministic, which estimating is not.
+
+Queue order decides the batch — resist grouping by area to cluster likely conflicts, or spreading
+across areas to avoid them. Determinism is worth more here than either, and Step 8 finds what it
+finds.
+
+**Sizing fixes how many, not which.** The ceiling is set once, here, because context is spent by
+the run as a whole. The issues themselves are still resolved one at a time — each iteration
+returns to this step — so the run stays on the highest-priority remaining work and picks up
+anything filed or re-prioritised while the previous issue was in flight. A batch pinned to a list
+captured at the start would lose that, and it is the more valuable of the two properties.
+
+So the size rule applies twice: once over the first `n` candidates to set the ceiling, and again
+to whatever each iteration actually resolves. An issue that comes back large is worked and then
+ends the batch, however much of the ceiling is left.
+
+Stop here under `--dry-run`, after showing the resolved target — under `--batch`, the whole
+planned batch and the size that justified it.
 
 ## Step 2 — Claim it
 
@@ -171,9 +210,28 @@ Where the branch comes from depends on how the session started:
 
 - **Not isolated** — branch from the default branch yourself, so the PR carries this issue only.
 
-Under `--all`, reset to the default branch between issues (`git checkout -B <next> origin/<default>`)
-and push each to its own remote branch. One worktree is one local branch, so draining a queue
-without resetting stacks three issues into a single PR that no one can review a piece of.
+Under `--batch`, reset to the default branch between issues and push each to its own remote
+branch, so every PR carries one issue's diff:
+
+```bash
+git checkout -B <next> origin/<default>
+```
+
+Working the next issue on top of the last one instead would pile the batch into a single PR that
+no one can review a piece of — which is the failure this reset exists to prevent, and it is worth
+the cost below.
+
+That cost lands in a worktree, where the two rules above genuinely collide: one worktree has one
+checked-out branch, and a batch needs several. From the second issue onward the run is no longer
+on the branch the harness named, and the harness tracks the branch it created rather than the run
+that moved off it. Nothing is lost — each branch is pushed before the next is created, and the
+PRs are already open — but the worktree ends on the last issue's branch and carries a local
+branch per issue. Name them in the report so whoever cleans up knows what is there. Do not try to
+satisfy both rules; only one of them can hold, and one unreviewable PR is the worse outcome.
+
+Give those branches their conventional `<prefix>/<n>-<slug>` names locally. Past the first issue
+there is no harness-named branch left to preserve, the local and upstream names may as well
+agree, and Step 8 merges them by name.
 
 ## Step 5 — Implement, test-first
 
@@ -266,7 +324,58 @@ by a path the reviewer did not see.
 
 Do not run `hew close`.
 
-## Step 8 — Report
+Under `--batch`, go back to Step 1 and resolve the next issue, until the ceiling is reached or
+the queue runs dry. When the batch is done, Step 8 verifies it as a whole.
+
+## Step 8 — Integrate the batch
+
+Skip this when the run delivered fewer than two issues; there is nothing to combine.
+
+Every issue in the batch was branched from `origin/<default>` and gated against it alone, so at
+this point **no tree has ever held two of these fixes at once**. Git catches the overlapping case
+on its own — two changes to the same lines become a merge conflict. The case that survives is the
+one it waves through: two changes in different files whose behaviours disagree, each branch green,
+each merging cleanly, and the default branch broken once both land.
+
+Merge them onto a throwaway branch and run the gate once:
+
+```bash
+git checkout -B integration/batch-<first>-<last> origin/<default>
+git merge --no-ff <branch-1>
+git merge --no-ff <branch-2>
+git merge --no-ff <branch-3>
+```
+
+One merge at a time, in the order the issues were worked — not `git merge <b1> <b2> <b3>`, which
+octopus-merges them and simply refuses the whole thing on any conflict. Sequential merges name
+the branch that clashed, which is the difference between reporting a pair and reporting "the
+batch broke".
+
+Then the same quality gate Step 6 selected, over the union of the changed files.
+
+**Nothing is pushed and no PR comes off this branch.** It is a check, not a deliverable — the
+issues are already delivered through their own PRs, and a fourth PR containing all three diffs
+would be exactly the unreviewable artifact Step 4 resets to avoid.
+
+A conflict or a gate failure here does **not** invalidate the PRs. Each one verified against the
+contract it was filed under, and each is still individually reviewable. What it means is that a
+dependency exists that the tracker never recorded — so record it now:
+
+- Name the specific pair, not the batch. "#47 and #51 both pass alone; together `TestRouteAuth`
+  fails" is actionable; "the batch failed" sends someone to bisect it again.
+- File it with `--discovered-from` naming both issues, and `--blocked-by` if the ordering is
+  clear. The primer's dedup-before-filing sequence applies.
+- Do **not** fix it inside either PR. The fix is bounded by neither issue's `### Where`, which
+  makes it unreviewed scope in a PR someone has already started reading.
+
+The run's status becomes `integration_failed` — every issue delivered, and the combination did
+not hold. That is a different fact from `failed`, where an issue never reached a PR at all, and
+collapsing the two would report a fixable coupling as a broken change.
+
+A green pass is worth stating plainly too: it is the evidence that these fixes were genuinely
+independent, which is the assumption every separate PR in the batch is resting on.
+
+## Step 9 — Report
 
 Say what happened in terms the next run — or a human reading a job log — can act on:
 
@@ -281,11 +390,23 @@ Say what happened in terms the next run — or a human reading a job log — can
 Discovered: #58 (filed, --discovered-from 42)
 ```
 
-Under `--all`, one block per issue, then a summary line with the counts and whatever stopped
-the run. Then re-resolve from Step 1 rather than working down a list captured at the start —
-re-reading `hew ready` each time is what keeps the run on the highest-priority remaining work,
-including anything filed or re-prioritised while the previous issue was in flight. Stop on the
-first `failed` outcome rather than continuing into work that may depend on it.
+Under `--batch`, one block per issue, then the integration result and a summary:
+
+```
+Batch: 3 of 3 delivered — 7 ready issues remain
+Integration: integration/batch-42-51, gate passed — the three fixes hold together
+Worktree left on fix/51-...; local branches fix/42-..., fix/47-..., fix/51-...
+```
+
+Say how many ready issues are left. Stopping at the run's own ceiling is success, not a drained
+queue, and a caller reading `delivered` without a remaining count cannot tell the two apart —
+the next tick is precisely the thing that needs to know.
+
+Between issues, re-resolve from Step 1 rather than working down the list the ceiling was sized
+from — re-reading `hew ready` each time is what keeps the run on the highest-priority remaining
+work, including anything filed or re-prioritised while the previous issue was in flight. Stop on
+the first `failed` outcome rather than continuing into work that may depend on it, and still run
+Step 8 over whatever was delivered before it.
 
 When `--json <path>` was given, also write the outcome file from [REFERENCE.md](REFERENCE.md).
 
@@ -296,18 +417,26 @@ in a question has to end in a reported outcome instead. The `status` field carri
 
 | status | Means |
 |---|---|
-| `delivered` | An issue was worked and a PR opened. |
+| `delivered` | Every issue the run took was worked and a PR opened. Under `--batch`, `batch.remaining` says whether the queue is drained or the ceiling simply ran out. |
+| `integration_failed` | Every issue reached a PR, but Step 8 could not merge or gate them together. The PRs stay open; the coupling is filed as its own issue. |
 | `failed` | An issue was claimed and worked, but verification did not pass. Branch pushed, no PR, issue still claimed. |
 | `no_ready_work` | `hew ready` was empty. The backlog is drained — a real result. |
 | `not_eligible` | Ready work exists, but none of it could be taken: all claimed, or all untriaged. |
 | `error` | The run could not start: not authenticated, not a git repository, dirty working tree. |
 
-The four non-`delivered` cases all end with zero PRs, and they mean entirely different things —
-a drained backlog is success, an unauthenticated CLI is an outage, and a queue of issues claimed
-by a dead agent is a stall that will never clear itself. A caller that collapses them reports a
-broken pipeline as a finished one, silently, until someone notices the PRs stopped arriving.
-Which is why `reason` is required whenever `status` is not `delivered`.
+Four of these end with zero PRs and mean entirely different things — a drained backlog is
+success, an unauthenticated CLI is an outage, and a queue of issues claimed by a dead agent is a
+stall that will never clear itself. A caller that collapses them reports a broken pipeline as a
+finished one, silently, until someone notices the PRs stopped arriving. Which is why `reason` is
+required whenever `status` is not `delivered`.
 
-One issue per invocation is the default for the same reason the claim is a lock: each tick takes
-exactly one item, a bad change costs one reviewable PR rather than ten, and the queue drains at
-a rate a human can keep up with. Reach for `--all` when someone is watching.
+`integration_failed` is the one that breaks that pattern, and deliberately: the PRs exist and are
+individually sound, so it is not a stalled run to be retried. It is a signal that two issues were
+filed as independent and are not. Retrying changes nothing; reviewing the pair does.
+
+One issue per invocation is still the default, for the same reason the claim is a lock: each tick
+takes exactly one item, a bad change costs one reviewable PR rather than ten, and the queue drains
+at a rate a human can keep up with. `--batch` trades some of that for a combined verification the
+single-issue path cannot offer, and its ceiling is what keeps the trade bounded — which is why
+there is no flag for an unbounded run. A queue drained without one degrades exactly where it can
+least afford to, and reports a green integration pass it never really made.
